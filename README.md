@@ -1,4 +1,4 @@
-# `{{project-name}}`
+# `ntim`
 
 ![Rust Version][rustc-image]
 [![crates.io][crate-image]][crate-link]
@@ -10,7 +10,7 @@
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 **Table of Contents**
 
-- [`{{project-name}}`](#project-name)
+- [`ntim`](#ntim)
     - [The Pitch](#the-pitch)
     - [The Anit-Pitch](#the-anit-pitch)
 - [Installation](#installation)
@@ -42,10 +42,10 @@ Ensure you have a [Rust toolchain installed](https://rustup.rs). Some of the
 dependencies also require `gcc` to be installed.
 
 ```
-$ git clone https://github.com/kbknapp/{{project-name}}
-$ cd {{project-name}}
+$ git clone https://github.com/ntqq-group/ntim
+$ cd ntim
 $ cargo build --release
-$ sudo cp target/release/{{crate_name}} /usr/local/bin/
+$ sudo cp target/release/ntim /usr/local/bin/
 ```
 
 # Usage
@@ -74,9 +74,9 @@ dual licensed as above, without any additional terms or conditions.
 [//]: # (badges)
 
 [rustc-image]: https://img.shields.io/badge/rustc-1.53+-blue.svg
-[crate-image]: https://img.shields.io/crates/v/{{project-name}}.svg
-[crate-link]: https://crates.io/crates/{{project-name}}
-[docs-image]: https://docs.rs/{{project-name}}/badge.svg
-[docs-link]: https://docs.rs/{{project-name}}
-[deps-image]: https://deps.rs/repo/github/kbknapp/{{project-name}}/status.svg
-[deps-link]: https://deps.rs/repo/github/kbknapp/{{project-name}}
+[crate-image]: https://img.shields.io/crates/v/ntim.svg
+[crate-link]: https://crates.io/crates/ntim
+[docs-image]: https://docs.rs/ntim/badge.svg
+[docs-link]: https://docs.rs/ntim
+[deps-image]: https://deps.rs/repo/github/kbknapp/ntim/status.svg
+[deps-link]: https://deps.rs/repo/github/kbknapp/ntim
