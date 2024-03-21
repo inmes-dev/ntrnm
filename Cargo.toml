@@ -1,9 +1,9 @@
 [package]
-name = "{{project-name}}"
+name = "ntim"
 version = "0.1.0"
 edition = "2018"
 authors = [
-	"Kevin K. <kbknapp@gmail.com>",
+	
 ]
 include = [
 	"src/**/*",
@@ -11,16 +11,16 @@ include = [
 	"README.md"
 ]
 description = ""
-repository = "https://github.com/kbknapp/{{project-name}}"
-documentation = "https://docs.rs/{{project-name}}/"
+repository = "https://github.com/ntqq-group/ntim"
+documentation = "https://docs.rs/ntim/"
 keywords = []
 categories = ["command-line-utilities"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 
 [badges]
-is-it-maintained-issue-resolution = { repository = "kbknapp/{{project-name}}" }
-is-it-maintained-open-issues = { repository = "kbknapp/{{project-name}}" }
+is-it-maintained-issue-resolution = { repository = "ntqq-group/ntim}" }
+is-it-maintained-open-issues = { repository = "ntqq-group/ntim" }
 
 maintenance = {status = "actively-developed"}
 
