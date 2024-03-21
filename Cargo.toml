@@ -1,0 +1,51 @@
+[package]
+name = "{{project-name}}"
+version = "0.1.0"
+edition = "2018"
+authors = [
+	"Kevin K. <kbknapp@gmail.com>",
+]
+include = [
+	"src/**/*",
+	"Cargo.toml",
+	"README.md"
+]
+description = ""
+repository = "https://github.com/kbknapp/{{project-name}}"
+documentation = "https://docs.rs/{{project-name}}/"
+keywords = []
+categories = ["command-line-utilities"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+
+[badges]
+is-it-maintained-issue-resolution = { repository = "kbknapp/{{project-name}}" }
+is-it-maintained-open-issues = { repository = "kbknapp/{{project-name}}" }
+
+maintenance = {status = "actively-developed"}
+
+[dependencies]
+anyhow = "1.0.40"
+clap = "3.0.0-beta.2"
+thiserror = "1.0.24"
+
+[build-dependencies]
+clap = "3.0.0-beta.2"
+
+[features]
+default     = ["std"]
+std         = [] # support for no_std in a backwards-compatible way
+debug       = [] # Enables debug messages
+doc         = [] # All the features which add to documentation
+
+[profile.test]
+opt-level = 1
+
+[profile.bench]
+lto = true
+codegen-units = 1
+
+[package.metadata.docs.rs]
+features = ["doc"]
+targets = ["x86_64-unknown-linux-gnu"]
+
