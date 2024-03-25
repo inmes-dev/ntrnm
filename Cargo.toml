@@ -1,5 +1,5 @@
 [package]
-name = "ntim"
+name = "ntrnm"
 version = "0.1.0"
 edition = "2018"
 authors = [
@@ -11,16 +11,16 @@ include = [
 	"README.md"
 ]
 description = ""
-repository = "https://github.com/ntqq-group/ntim"
-documentation = "https://docs.rs/ntim/"
+repository = "https://github.com/inmes-dev/ntrnm"
+documentation = "https://docs.rs/ntrnm/"
 keywords = []
 categories = ["command-line-utilities"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 
 [badges]
-is-it-maintained-issue-resolution = { repository = "ntqq-group/ntim}" }
-is-it-maintained-open-issues = { repository = "ntqq-group/ntim" }
+is-it-maintained-issue-resolution = { repository = "inmes-dev/ntrnm" }
+is-it-maintained-open-issues = { repository = "inmes-dev/ntrnm" }
 
 maintenance = {status = "actively-developed"}
 

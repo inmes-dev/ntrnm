@@ -1,6 +1,6 @@
 [clog]
-repository = "https://github.com/kbknapp/{{project-name}}"
-subtitle = "{{project-name}} Release"
+repository = "https://github.com/inmes-dev/ntrnm"
+subtitle = "ntrnm Release"
 
 [sections]
 Documentation = ["docs", "doc"]
