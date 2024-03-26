@@ -12,8 +12,8 @@ An IM protocol project. Built in rust, serving `OneBot 11` and `Kritor`.
 **Table of Contents**
 
 - [`ntrnm`](#ntrnm)
-    - [The Pitch](#the-pitch)
-    - [Risk behaviour](#Risk-behaviour)
+    - [Supported features or functions](#supported-features-or-functions)
+    - [Risk Behaviour](#risk-behaviour)
 - [Installation](#installation)
     - [Compile from Source](#compile-from-source)
 - [Usage](#usage)
