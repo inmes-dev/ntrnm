@@ -6,6 +6,8 @@ pub enum ClientError {
     DNSQueryError,
     TcpConnectError,
     TcpNotConnectedError,
+    TcpWriteError(Box<dyn Error>),
+    TcpReadError(Box<dyn Error>),
 }
 
 impl Display for ClientError {
@@ -13,8 +15,9 @@ impl Display for ClientError {
         match self {
             ClientError::DNSQueryError => write!(f, "DNS query error"),
             ClientError::TcpConnectError => write!(f, "TCP connect error"),
-            ClientError::TcpSetOptionsError => write!(f, "Cannot set options for TCP stream"),
             ClientError::TcpNotConnectedError => write!(f, "TCP stream is not connected"),
+            ClientError::TcpWriteError(e) => write!(f, "TCP write error: {e}"),
+            ClientError::TcpReadError(e) => write!(f, "TCP read error: {e}"),
         }
     }
 }

@@ -68,25 +68,31 @@ impl Client {
         self.status.connected = false;
     }
 
-    pub async fn send(&mut self, data: &[u8]) -> Result<(), Box<dyn Error>> {
+    pub async fn send(&mut self, data: &[u8]) -> Result<(), ClientError> {
         if !self.status.connected {
-            return Err(Box::new(ClientError::TcpConnectError));
+            return Err(ClientError::TcpNotConnectedError);
         }
 
         if let Some(stream) = &mut self.stream {
-            stream.write_all(data).await?;
+            stream
+                .write_all(data)
+                .await
+                .map_err(|e| ClientError::TcpWriteError(e.into()))?;
         }
 
         Ok(())
     }
 
-    pub async fn receive(&mut self, data: &mut [u8]) -> Result<(), Box<dyn Error>> {
+    pub async fn receive(&mut self, data: &mut [u8]) -> Result<(), ClientError> {
         if !self.status.connected {
-            return Err(Box::new(ClientError::TcpConnectError));
+            return Err(ClientError::TcpNotConnectedError);
         }
 
         if let Some(stream) = &mut self.stream {
-            stream.read_exact(data).await?;
+            stream
+                .read_exact(data)
+                .await
+                .map_err(|e| ClientError::TcpReadError(e.into()))?;
         }
 
         Ok(())
