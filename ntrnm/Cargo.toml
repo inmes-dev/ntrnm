@@ -9,7 +9,7 @@ repository = "https://github.com/inmes-dev/ntrnm"
 documentation = "https://docs.rs/ntrnm/"
 categories = ["command-line-utilities"]
 license = "MIT OR Apache-2.0"
-readme = "README.md"
+readme = "../README.md"
 
 [badges]
 is-it-maintained-issue-resolution = { repository = "inmes-dev/ntrnm" }
@@ -21,6 +21,7 @@ maintenance = {status = "actively-developed"}
 anyhow = "1.0.81"
 clap = "4.5.4"
 thiserror = "1.0.24"
+ntrnm_client = { path = "../ntrnm_client" }
 
 [build-dependencies]
 clap = "4.5.4"

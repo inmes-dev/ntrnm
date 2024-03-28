@@ -11,7 +11,7 @@
 target/
 
 # Cargo files
-Cargo.lock
+ntrnm/Cargo.lock
 
 # Temp files
 .*~
