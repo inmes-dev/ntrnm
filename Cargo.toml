@@ -1,0 +1,17 @@
+[workspace]
+members = [
+    "crates/*"
+]
+resolver = "2"
+
+[workspace.package]
+rust-version = "1.76"
+edition = "2021"
+
+license = "Apache-2.0, MIT"
+homepage = "https://github.com/inmes-dev/ntrnm"
+repository = "https://github.com/inmes-dev/ntrnm"
+
+[workspace.metadata.release]
+tag-message = "Release {{crate_name}} version {{version}}"
+tag-name = "{{prefix}}v{{version}}"

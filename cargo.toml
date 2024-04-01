@@ -1,9 +1,0 @@
-[workspace]
-members = [
-    "ntrnm",
-    "ntrnm_client"
-]
-resolver = "2"
-
-[workspace.dependencies]
-tokio = "1.36.0"

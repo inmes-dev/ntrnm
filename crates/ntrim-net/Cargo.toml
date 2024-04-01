@@ -1,0 +1,74 @@
+[package]
+name = "ntrim-net"
+version = "0.0.1"
+description = "Net part of the `ntrim` - tcp/http"
+
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+documentation = "https://github.com/inmes-dev/ntrnm"
+readme = "../../README.md"
+
+keywords = ["ntrim", "oicq", "qqbot", "icqq", "bot"]
+categories = ["api-bindings", "asynchronous"]
+
+[features]
+# NB: When adding features here, don't forget to update ntrim's Cargo.toml
+default = ["rustls"]
+rustls = ["reqwest/rustls-tls"]
+native-tls = ["reqwest/native-tls"]
+
+full = []
+
+
+[dependencies]
+futures = "0.3.30"
+tokio = { version = "1.37.0", features = ["full"] }
+bytes = "1.6.0"
+reqwest = { version = "0.12.2", features = [
+    "json",
+    "stream",
+    "multipart",
+    "gzip",
+    "deflate",
+    "http2",
+], default-features = false }
+prost = "0.12"
+log = "0.4.21"
+url = { version = "2.5.0", features = ["serde"] }
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.115"
+serde_with_macros = "3.7.0"
+uuid = { version = "1.8.0", features = ["v4"] }        # for attaching input files
+
+derive_more = "0.99.17"
+mime = "0.3.17"
+thiserror = "1.0.58"
+once_cell = "1.19.0"
+rc-box = "1.2.0"
+chrono = { version = "0.4.37", default-features = false }
+bitflags = { version = "2.5.0" }
+
+
+[dev-dependencies]
+tokio = { version = "1.37.0", features = ["full"] }
+cool_asserts = "2.0.3"
+
+[package.metadata.docs.rs]
+features = ["full", "nightly", "tokio/rt-multi-thread"]
+rustdoc-args = ["--cfg", "docsrs", "-Znormalize-docs"]
+
+# https://github.com/rust-lang/rust/issues/88791
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
+
+[package.metadata.release]
+tag-prefix = "net-"
+enable-features = ["full"]
+pre-release-replacements = [
+    { file = "README.md", search = "ntrim-net = \"[^\"]+\"", replace = "ntrim-net = \"{{version}}\"" },
+    { file = "src/lib.rs", search = "ntrim-net = \"[^\"]+\"", replace = "ntrim-net = \"{{version}}\"" },
+    { file = "CHANGELOG.md", search = "## unreleased", replace = "## unreleased\n\n## {{version}} - {{date}}", exactly = 1 },
+]

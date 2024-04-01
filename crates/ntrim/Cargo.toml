@@ -1,0 +1,79 @@
+# Cargo template from teloxide
+# https://github.com/teloxide/teloxide
+
+[package]
+name = "ntrim"
+version = "0.0.1"
+description = "Ntrim is a qqbot framework for Rust"
+
+rust-version.workspace = true
+
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+documentation = "https://docs.rs/ntrim/" # TODO(Document)
+readme = "../../README.md"
+
+keywords = ["ntrim", "oicq", "qq-bot", "qq-bot-api", "bot"]
+categories = ["web-programming", "api-bindings", "asynchronous"]
+
+
+[features]
+default = ["rustls"]
+native-tls = ["ntrim-core/native-tls"]
+rustls = ["ntrim-core/rustls"]
+
+full = []
+
+
+[dependencies]
+ntrim-core = { version = "0.0.1", path = "../ntrim-core", default-features = false }
+clap = { version = "4.5.4", features = ["derive"] }
+pretty_env_logger = "0.5.0"
+
+serde_json = "1.0.115"
+serde_toml = "0.0.1"
+serde = { version = "1.0.197", features = ["derive"] }
+
+tokio = { version = "1.37.0", features = ["full"] }
+tokio-util = "0.7.10"
+tokio-stream = "0.1.15"
+
+url = "2.5.0"
+log = "0.4.21"
+bytes = "1.6.0"
+mime = "0.3.17"
+derive_more = "0.99.17"
+thiserror = "1.0.58"
+futures = "0.3.30"
+
+bincode = { version = "2.0.0-rc.3" }
+rand = { version = "0.8.5" }
+
+[dev-dependencies]
+rand = "0.8.5"
+pretty_env_logger = "0.5.0"
+serde = "1.0.197"
+serde_json = "1.0.115"
+tokio = { version = "1.8", features = ["full"] }
+reqwest = "0.12.2"
+chrono = "0.4.37"
+tokio-stream = "0.1.15"
+
+
+[package.metadata.docs.rs]
+# NB: can't use `all-features = true`, because `sqlite-storage-nativetls` conflicts with `sqlite-storage-rustls`
+features = ["full", "nightly"]
+rustdoc-args = ["--cfg", "docsrs"]
+rustc-args = ["--cfg", "dep_docsrs"]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
+
+[package.metadata.release]
+tag-prefix = ""
+enable-features = ["full"]
+pre-release-replacements = [
+    { file = "../../README.md", search = "ntrim = \\{ version = \"[^\"]+\"", replace = "ntrim = { version = \"{{version}}\"" },
+    { file = "../../CHANGELOG.md", search = "## unreleased", replace = "## unreleased\n\n## {{version}} - {{date}}", exactly = 1 },
+]
