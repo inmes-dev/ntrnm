@@ -1,25 +1,17 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum ClientError {
-    DNSQueryError,
+    #[error("DNS query error")]
+    DnsQueryError,
+    #[error("TCP connect error")]
     TcpConnectError,
+    #[error("TCP not connected")]
     TcpNotConnectedError,
+    #[error("TCP write error: {0}")]
     TcpWriteError(Box<dyn Error>),
+    #[error("TCP read error: {0}")]
     TcpReadError(Box<dyn Error>),
 }
-
-impl Display for ClientError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ClientError::DNSQueryError => write!(f, "DNS query error"),
-            ClientError::TcpConnectError => write!(f, "TCP connect error"),
-            ClientError::TcpNotConnectedError => write!(f, "TCP stream is not connected"),
-            ClientError::TcpWriteError(e) => write!(f, "TCP write error: {e}"),
-            ClientError::TcpReadError(e) => write!(f, "TCP read error: {e}"),
-        }
-    }
-}
-
-impl Error for ClientError {}

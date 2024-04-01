@@ -1,100 +1,107 @@
 use std::error::Error;
+use std::future::Future;
 use std::net::SocketAddr;
+use bitflags::bitflags;
+use bytes::Buf;
+use log::{error, info};
 
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-use crate::config::Config;
 use crate::error::ClientError;
-use crate::global::NT_SERVER;
+use crate::global::{NT_V4_SERVER, NT_V6_SERVER};
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-pub struct Status {
-    connected: bool,
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    struct Status: u32 {
+        /// The client has an IPv6 address.
+        const Ipv6Addr =       0b00000001;
+        /// The client has an IPv4 address.
+        const Ipv4Addr =       0b00000010;
+        /// The client is connected to the server.
+        const Connected =       0b00000100;
+        /// The client is disconnected from the server.
+        const Disconnected =    0b00001000;
+        /// The client is connecting to the server.
+        const Connecting =      0b00010000;
+        /// The client is ready to connect.
+        const Ready =           0b00100000;
+    }
 }
 
 #[derive(Debug)]
 pub struct Client {
-    config: Config,
     status: Status,
     stream: Option<TcpStream>,
 }
 
 impl Client {
-    pub fn new(config: Config) -> Self {
+    pub fn new_ipv6_client() -> Self {
         Self {
-            config,
-            status: Status { connected: false },
+            status: Status::Ipv6Addr | Status::Ready,
             stream: None,
         }
     }
 
-    async fn query_for_address(&self) -> Result<Vec<SocketAddr>, Box<dyn Error>> {
-        Ok(tokio::net::lookup_host(NT_SERVER).await?.collect())
+    pub fn new_ipv4_client() -> Self {
+        Self {
+            status: Status::Ipv4Addr | Status::Ready,
+            stream: None,
+        }
+    }
+
+    async fn query_for_address(&self) -> Result<Vec<SocketAddr>, ClientError> {
+        let server = if self.status.contains(Status::Ipv4Addr) {
+            NT_V4_SERVER
+        } else {
+            NT_V6_SERVER
+        };
+        info!("Querying for address: {}", server);
+        let addrs: Vec<SocketAddr> = match tokio::net::lookup_host(server).await {
+            Ok(result) => result.collect(),
+            Err(e) => {
+                error!("Failed to query for address: {}", e);
+                return Err(ClientError::DnsQueryError);
+            }
+        };
+        return if addrs.is_empty() {
+            Err(ClientError::DnsQueryError)
+        } else {
+            Ok(addrs)
+        }
     }
 
     pub async fn connect(&mut self) -> Result<(), ClientError> {
-        let addresses = self
-            .query_for_address()
-            .await
-            .map_err(|_| ClientError::DNSQueryError)?;
+        let addrs = self.query_for_address().await?;
 
-        if addresses.is_empty() {
-            return Err(ClientError::DNSQueryError);
-        }
-
-        let tcp_stream = TcpStream::connect(&addresses[0])
-            .await
-            .map_err(|_| ClientError::TcpConnectError)?;
+        let tcp_stream = match TcpStream::connect(addrs.first().unwrap()).await {
+            Ok(result) => result,
+            Err(e) => {
+                error!("Failed to connect server: {}", e);
+                return Err(ClientError::TcpConnectError);
+            }
+        };
 
         self.stream = Some(tcp_stream);
-        self.status.connected = true;
+        self.status.set(Status::Ready, true);
+        self.status.set(Status::Connected, true);
+        self.status.set(Status::Disconnected, false);
 
         Ok(())
     }
 
     pub fn is_connected(&self) -> bool {
-        self.status.connected
+        self.status.contains(Status::Connected)
     }
 
     pub async fn disconnect(&mut self) {
         if let Some(stream) = &mut self.stream.take() {
             let _ = stream.shutdown();
         }
-
         self.stream = None;
-
-        self.status.connected = false;
-    }
-
-    pub async fn send(&mut self, data: &[u8]) -> Result<(), ClientError> {
-        if !self.status.connected {
-            return Err(ClientError::TcpNotConnectedError);
-        }
-
-        if let Some(stream) = &mut self.stream {
-            stream
-                .write_all(data)
-                .await
-                .map_err(|e| ClientError::TcpWriteError(e.into()))?;
-        }
-
-        Ok(())
-    }
-
-    pub async fn receive(&mut self, data: &mut [u8]) -> Result<(), ClientError> {
-        if !self.status.connected {
-            return Err(ClientError::TcpNotConnectedError);
-        }
-
-        if let Some(stream) = &mut self.stream {
-            stream
-                .read_exact(data)
-                .await
-                .map_err(|e| ClientError::TcpReadError(e.into()))?;
-        }
-
-        Ok(())
+        self.status.set(Status::Connected, false);
+        self.status.set(Status::Disconnected, true);
+        self.status.set(Status::Ready, false);
     }
 }
