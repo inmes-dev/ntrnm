@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
+use crate::codec::decoder::Decoder;
+use crate::codec::encoder::Encoder;
 use crate::error::ClientError;
 use crate::global::{NT_V4_SERVER, NT_V6_SERVER};
 
@@ -33,21 +35,24 @@ bitflags! {
 #[derive(Debug)]
 pub struct Client {
     status: Status,
-    stream: Option<TcpStream>,
+    encoder: Option<Encoder>,
+    decoder: Option<Decoder>,
 }
 
 impl Client {
     pub fn new_ipv6_client() -> Self {
         Self {
             status: Status::Ipv6Addr | Status::Ready,
-            stream: None,
+            encoder: None,
+            decoder: None
         }
     }
 
     pub fn new_ipv4_client() -> Self {
         Self {
             status: Status::Ipv4Addr | Status::Ready,
-            stream: None,
+            encoder: None,
+            decoder: None
         }
     }
 
@@ -75,7 +80,7 @@ impl Client {
     pub async fn connect(&mut self) -> Result<(), ClientError> {
         let addrs = self.query_for_address().await?;
 
-        let tcp_stream = match TcpStream::connect(addrs.first().unwrap()).await {
+        let mut tcp_stream = match TcpStream::connect(addrs.first().unwrap()).await {
             Ok(result) => result,
             Err(e) => {
                 error!("Failed to connect server: {}", e);
@@ -83,7 +88,13 @@ impl Client {
             }
         };
 
-        self.stream = Some(tcp_stream);
+        let (rx, tx) = tcp_stream.into_split();
+        let encoder = Encoder::new(tx);
+        let decoder = Decoder::new(rx);
+
+        // `tcp_stream` is moved into `rx` and `tx` so it's useless now.
+        self.encoder = Some(encoder);
+        self.decoder = Some(decoder);
         self.status.set(Status::Ready, true);
         self.status.set(Status::Connected, true);
         self.status.set(Status::Disconnected, false);
@@ -95,13 +106,22 @@ impl Client {
         self.status.contains(Status::Connected)
     }
 
-    pub async fn disconnect(&mut self) {
-        if let Some(stream) = &mut self.stream.take() {
-            let _ = stream.shutdown();
-        }
-        self.stream = None;
+    /// close the connection, please use std::drop instead of this method.
+    fn disconnect(&mut self) {
         self.status.set(Status::Connected, false);
         self.status.set(Status::Disconnected, true);
         self.status.set(Status::Ready, false);
+    }
+}
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        self.disconnect();
+        if let Some(reader) = self.decoder.take() {
+            drop(reader);
+        }
+        if let Some(writer) = self.encoder.take() {
+            drop(writer);
+        }
     }
 }

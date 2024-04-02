@@ -15,3 +15,11 @@ pub enum ClientError {
     #[error("TCP read error: {0}")]
     TcpReadError(Box<dyn Error>),
 }
+
+#[derive(Error, Debug)]
+pub enum CodecError {
+    #[error("Packet encode error: {0}")]
+    EncodeError(Box<dyn Error>),
+    #[error("Packet decode error: {0}")]
+    DecodeError(Box<dyn Error>),
+}
