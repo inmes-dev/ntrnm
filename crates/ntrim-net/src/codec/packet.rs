@@ -1,4 +1,5 @@
 use bytes::{BufMut, BytesMut};
+use crate::bytes::BytePacketBuilder;
 
 pub enum CommandType {
     /// Msf Packet
@@ -39,12 +40,9 @@ pub struct UniPacket {
 impl UniPacket {
     pub fn new(command_type: CommandType, command: String, wup_buffer: Vec<u8>, uin: String, seq: u32) -> Self {
         Self {
-            command_type,
-            command,
-            wup_buffer,
-            uin: uin,
-            seq: seq,
-            is_login: false
+            command_type, command, wup_buffer, uin, seq,
+            is_login: false,
+
         }
     }
 

@@ -903,6 +903,7 @@ dependencies = [
  "log",
  "mime",
  "ntrim-core",
+ "ntrim-net",
  "pretty_env_logger",
  "rand",
  "reqwest",
