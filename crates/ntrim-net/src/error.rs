@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use std::io;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -18,8 +19,13 @@ pub enum ClientError {
 
 #[derive(Error, Debug)]
 pub enum CodecError {
-    #[error("Packet encode error: {0}")]
-    EncodeError(Box<dyn Error>),
-    #[error("Packet decode error: {0}")]
-    DecodeError(Box<dyn Error>),
+    #[error("Packet codec error: {0}")]
+    CodecError(Box<dyn Error>),
+
+}
+
+impl From<io::Error> for CodecError {
+    fn from(value: io::Error) -> Self {
+        CodecError::CodecError(Box::new(value))
+    }
 }

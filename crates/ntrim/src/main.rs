@@ -2,7 +2,9 @@ extern crate pretty_env_logger;
 #[macro_use] extern crate log;
 
 use bytes::{BufMut, BytesMut};
+use tokio_util::codec::Encoder;
 use ntrim_net::bytes::BytePacketBuilder;
+use ntrim_net::packet::packet::{CommandType, UniPacket};
 
 const WELCOME: &str = r#"
   _   _ _____ ____  ___ __  __
@@ -19,18 +21,15 @@ fn main() {
     pretty_env_logger::init();
     println!("{}", WELCOME);
 
-    let mut buf = BytesMut::new();
-    buf.put_packet(|x| {
-        x.put_i32(1);
-        x.put_i32(1372362033);
-        x.put_packet_with_i32_len(|y| {
-            y.put_i32(1);
-            y.put_i32(1372362033);
-            (y.len() + 4) as i32
-        });
-    });
-    // to hex
-    let hex = buf.iter().map(|x| format!("{:02x}", x)).collect::<Vec<String>>().join(" ");
-    info!("buf: {:?}", hex);
+    let buf = vec![1u8];
+    let packet = UniPacket::new(
+        CommandType::Register,
+        "register".to_string(),
+        buf.clone(),
+        "1372362033".to_string(),
+    );
+
+    let buf = packet.to_wup_buffer();
+    info!("hex: {}", hex::encode(buf))
 }
 

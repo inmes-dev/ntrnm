@@ -1,25 +1,16 @@
+use bytes::BytesMut;
 use tokio::net::tcp::{OwnedReadHalf};
+use tokio_util::codec::Decoder;
+use crate::client::Client;
 use crate::error::CodecError;
+use crate::packet::from_service_msg::FromServiceMsg;
 
-#[derive(Debug)]
-pub(crate) struct Decoder {
-    rx: OwnedReadHalf,
-}
+impl Decoder for Client {
+    type Item = FromServiceMsg;
 
-impl Decoder {
-    pub(crate) fn new(rx: OwnedReadHalf) -> Self {
-        Self { rx }
-    }
+    type Error = CodecError;
 
-    pub async fn recv_packet(&mut self) -> Result<(), CodecError> {
-
-        Ok(())
-    }
-}
-
-impl Drop for Decoder {
-    fn drop(&mut self) {
-        // OwnedReadHalf 不需要 shutdown
-        // let _ = self.rx.shutdown();
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        todo!()
     }
 }

@@ -7,10 +7,9 @@ use log::{error, info};
 
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 
-use crate::codec::decoder::Decoder;
-use crate::codec::encoder::Encoder;
 use crate::error::ClientError;
 use crate::global::{NT_V4_SERVER, NT_V6_SERVER};
 
@@ -35,24 +34,25 @@ bitflags! {
 #[derive(Debug)]
 pub struct Client {
     status: Status,
-    encoder: Option<Encoder>,
-    decoder: Option<Decoder>,
+    tx: Option<OwnedWriteHalf>,
+    rx: Option<OwnedReadHalf>,
+
 }
 
 impl Client {
     pub fn new_ipv6_client() -> Self {
         Self {
             status: Status::Ipv6Addr | Status::Ready,
-            encoder: None,
-            decoder: None
+            tx: None,
+            rx: None
         }
     }
 
     pub fn new_ipv4_client() -> Self {
         Self {
             status: Status::Ipv4Addr | Status::Ready,
-            encoder: None,
-            decoder: None
+            tx: None,
+            rx: None
         }
     }
 
@@ -89,12 +89,10 @@ impl Client {
         };
 
         let (rx, tx) = tcp_stream.into_split();
-        let encoder = Encoder::new(tx);
-        let decoder = Decoder::new(rx);
 
         // `tcp_stream` is moved into `rx` and `tx` so it's useless now.
-        self.encoder = Some(encoder);
-        self.decoder = Some(decoder);
+        self.tx = Some(tx);
+        self.rx = Some(rx);
         self.status.set(Status::Ready, true);
         self.status.set(Status::Connected, true);
         self.status.set(Status::Disconnected, false);
@@ -117,11 +115,8 @@ impl Client {
 impl Drop for Client {
     fn drop(&mut self) {
         self.disconnect();
-        if let Some(reader) = self.decoder.take() {
-            drop(reader);
-        }
-        if let Some(writer) = self.encoder.take() {
-            drop(writer);
+        if let Some(mut tx) = self.tx.take() {
+            let _ = tx.shutdown();
         }
     }
 }

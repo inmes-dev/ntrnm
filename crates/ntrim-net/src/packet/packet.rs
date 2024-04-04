@@ -1,6 +1,6 @@
 use bytes::{BufMut, BytesMut};
-use crate::bytes::BytePacketBuilder;
 
+#[derive(Debug)]
 pub enum CommandType {
     /// Msf Packet
     Msf,
@@ -16,6 +16,7 @@ pub enum CommandType {
     WtLoginSig,
 
     /// Cmd Register
+    /// request to go live!!!
     Register,
 
     /// Service packet
@@ -26,28 +27,25 @@ pub enum CommandType {
     Heartbeat,
 }
 
+#[derive(Debug)]
 pub struct UniPacket {
-    command_type: CommandType,
-    command: String,
+    pub command_type: CommandType,
+    pub command: String,
     /// not with data length
-    wup_buffer: Vec<u8>,
-    uin: String,
-    seq: u32,
-    is_login: bool,
+    pub wup_buffer: Vec<u8>,
+    pub uin: String,
 }
 
-
 impl UniPacket {
-    pub fn new(command_type: CommandType, command: String, wup_buffer: Vec<u8>, uin: String, seq: u32) -> Self {
+    pub fn new(
+        command_type: CommandType,
+        command: String,
+        wup_buffer: Vec<u8>,
+        uin: String,
+    ) -> Self {
         Self {
-            command_type, command, wup_buffer, uin, seq,
-            is_login: false,
-
+            command_type, command, wup_buffer, uin
         }
-    }
-
-    pub fn get_login_flag(&self) -> u32 {
-        if self.is_login { 0xB } else { 0xA }
     }
 
     /// 0x0 no encrypt
