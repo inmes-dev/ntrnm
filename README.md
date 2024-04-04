@@ -31,11 +31,13 @@ An IM protocol project. Built in rust, serving `OneBot 11` and `Kritor`.
 
 | Login          | State              | Group          | State |
 |----------------|--------------------|----------------|-------|
-| Password Login | :heavy_check_mark: | Get Group List |       |
+| Password Login |                    | Get Group List |       |
 | QRCode Login   |                    |                |       |
-| Ticket Login   |                    |                |       |
+| Ticket Login   | :heavy_check_mark: |                |       |
 
 </details>
+
+> It is recommended to use the `Shamrock` framework to export login tickets, login via tickets has bypassed the wind control as well as signature errors.
 
 ## Risk behaviour
 

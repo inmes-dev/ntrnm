@@ -2,7 +2,7 @@ use bytes::{BufMut, BytesMut};
 
 pub trait BytePacketBuilder: BufMut {
     #[inline]
-    fn put_packet(&mut self, builder: fn (&mut BytesMut) -> ())
+    fn put_packet(&mut self, builder: &mut dyn FnMut(&mut BytesMut))
         where Self: Sized
     {
         let mut buf = BytesMut::new();
@@ -11,7 +11,7 @@ pub trait BytePacketBuilder: BufMut {
     }
 
     #[inline]
-    fn put_packet_with_i32_len(&mut self, builder: fn (&mut BytesMut) -> i32)
+    fn put_packet_with_i32_len(&mut self, builder: &mut dyn FnMut(&mut BytesMut) -> i32)
         where Self: Sized
     {
         let mut buf = BytesMut::new();
@@ -21,7 +21,7 @@ pub trait BytePacketBuilder: BufMut {
     }
 
     #[inline]
-    fn put_packet_with_i16_len(&mut self, builder: fn (&mut BytesMut) -> i16)
+    fn put_packet_with_i16_len(&mut self, builder: &mut dyn FnMut(&mut BytesMut) -> i16)
         where Self: Sized
     {
         let mut buf = BytesMut::new();

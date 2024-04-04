@@ -2,7 +2,7 @@ use bytes::BytesMut;
 use tokio::net::tcp::{OwnedReadHalf};
 use tokio_util::codec::Decoder;
 use crate::client::Client;
-use crate::error::CodecError;
+use crate::codec::CodecError;
 use crate::packet::from_service_msg::FromServiceMsg;
 
 impl Decoder for Client {

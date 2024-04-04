@@ -1,5 +1,5 @@
 use std::error::Error;
-use ntrim_net::client::Client;
+use crate::client::Client;
 
 pub struct Bot {
     /// TCP client.

@@ -3,8 +3,7 @@ extern crate pretty_env_logger;
 
 use bytes::{BufMut, BytesMut};
 use tokio_util::codec::Encoder;
-use ntrim_net::bytes::BytePacketBuilder;
-use ntrim_net::packet::packet::{CommandType, UniPacket};
+use ntrim_core::packet::packet::{CommandType, UniPacket};
 
 const WELCOME: &str = r#"
   _   _ _____ ____  ___ __  __
