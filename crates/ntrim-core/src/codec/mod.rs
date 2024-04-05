@@ -7,7 +7,7 @@ pub(crate) mod decoder;
 pub(crate) mod encoder;
 
 #[derive(Error, Debug)]
-pub enum CodecError {
+pub(crate) enum CodecError {
     #[error("Packet codec error: {0}")]
     CodecError(Box<dyn Error>),
 }

@@ -25,7 +25,6 @@ fn main() {
         CommandType::Register,
         "register".to_string(),
         buf.clone(),
-        "1372362033".to_string(),
     );
 
     let buf = packet.to_wup_buffer();

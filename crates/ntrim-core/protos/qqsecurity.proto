@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package qqsecurity;
+
+message QQSecurity {
+  bytes client_ip_cookie = 8;
+  uint32 flag = 9;
+
+}

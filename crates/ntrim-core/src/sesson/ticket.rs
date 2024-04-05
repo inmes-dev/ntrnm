@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use bitflags::bitflags;
 
 bitflags! {
@@ -36,13 +37,26 @@ bitflags! {
 #[derive(Debug, Clone)]
 pub struct Ticket {
     pub id: SigType,
+    /// e.g. skey or d2key
     pub key: Vec<u8>,
+    /// e.g. d2
     pub value: Option<Vec<u8>>,
     pub create_time: u64,
     /// 0 means never expire
     /// unit is seconds -> expires after n seconds
     /// `1` means expire after 1 second
     pub expire_time: u32,
+}
+
+impl Display for Ticket {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let hex_key = hex::encode(&self.key);
+        let hex_value = match &self.value {
+            Some(value) => hex::encode(value),
+            None => "None".to_string(),
+        };
+        write!(f, "Ticket {{ id: {:?}, key: {}, value: {}, create_time: {}, expire_time: {} }}", self.id, hex_key, hex_value, self.create_time, self.expire_time)
+    }
 }
 
 #[macro_export]
@@ -70,6 +84,8 @@ pub trait TicketManager {
     fn get(&self, id: SigType) -> Option<&Ticket>;
 
     fn remove(&mut self, id: SigType) -> Option<Ticket>;
+
+    fn contain(&self, id: SigType) -> bool;
 
     fn is_expired(&self, id: SigType) -> bool;
 }

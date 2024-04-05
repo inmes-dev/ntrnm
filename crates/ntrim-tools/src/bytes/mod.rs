@@ -29,6 +29,22 @@ pub trait BytePacketBuilder: BufMut {
         self.put_i16(len);
         self.put(buf);
     }
+
+    #[inline]
+    fn put_bytes_with_i32_len(&mut self, bytes: &[u8], len: usize)
+        where Self: Sized
+    {
+        self.put_i32(len as i32);
+        self.put_slice(bytes);
+    }
+
+    #[inline]
+    fn put_bytes_with_i16_len(&mut self, bytes: &[u8], len: usize)
+        where Self: Sized
+    {
+        self.put_i16(len as i16);
+        self.put_slice(bytes);
+    }
 }
 
 impl BytePacketBuilder for BytesMut {}

@@ -10,13 +10,14 @@ use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
+use crate::sesson::SsoSession;
 
 const NT_V4_SERVER: &str = "msfwifi.3g.qq.com";
 const NT_V6_SERVER: &str = "msfwifiv6.3g.qq.com";
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    struct Status: u32 {
+    pub struct Status: u32 {
         /// The client has an IPv6 address.
         const Ipv6Addr =       0b00000001;
         /// The client has an IPv4 address.
@@ -47,23 +48,30 @@ pub enum ClientError {
 }
 
 #[derive(Debug)]
-pub struct Client {
+pub(crate) struct Client {
     status: Status,
-    channel: (Option<OwnedWriteHalf>, Option<OwnedReadHalf>)
+    channel: (Option<OwnedWriteHalf>, Option<OwnedReadHalf>),
+    pub session: SsoSession
 }
 
 impl Client {
-    pub fn new_ipv6_client() -> Self {
+    pub fn new_ipv6_client(
+        session: SsoSession
+    ) -> Self {
         Self {
             status: Status::Ipv6Addr | Status::Ready,
-            channel: (None, None)
+            channel: (None, None),
+            session
         }
     }
 
-    pub fn new_ipv4_client() -> Self {
+    pub fn new_ipv4_client(
+        session: SsoSession
+    ) -> Self {
         Self {
             status: Status::Ipv4Addr | Status::Ready,
-            channel: (None, None)
+            channel: (None, None),
+            session
         }
     }
 

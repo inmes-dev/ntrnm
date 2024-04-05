@@ -33,7 +33,6 @@ pub struct UniPacket {
     pub command: String,
     /// not with data length
     pub wup_buffer: Vec<u8>,
-    pub uin: String,
 }
 
 impl UniPacket {
@@ -41,10 +40,9 @@ impl UniPacket {
         command_type: CommandType,
         command: String,
         wup_buffer: Vec<u8>,
-        uin: String,
     ) -> Self {
         Self {
-            command_type, command, wup_buffer, uin
+            command_type, command, wup_buffer
         }
     }
 

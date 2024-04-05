@@ -5,9 +5,10 @@
 /// Please do not expose any then interfaces related to the net module externally.
 ///
 pub mod packet;
-pub mod ticket;
+pub mod sesson;
 pub mod bot;
 
 /// Only current module can access the global module.
-pub mod client;
-pub mod codec;
+pub(crate) mod client;
+pub(crate) mod codec;
+pub(crate) mod pb;

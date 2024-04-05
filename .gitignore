@@ -31,3 +31,6 @@ expanded.rs
 
 # ctags
 **/*.vi
+
+crates/ntrim-core/bin/*
+crates/ntrim-core/src/pb/*
