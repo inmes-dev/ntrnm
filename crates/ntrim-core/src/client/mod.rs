@@ -1,6 +1,9 @@
+mod qsec;
+
 use std::error::Error;
 use std::future::Future;
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
 use bitflags::bitflags;
 use bytes::Buf;
 use log::{error, info};
@@ -50,7 +53,7 @@ pub enum ClientError {
 #[derive(Debug)]
 pub(crate) struct Client {
     status: Status,
-    channel: (Option<OwnedWriteHalf>, Option<OwnedReadHalf>),
+    channel: (Option<Arc<Mutex<OwnedWriteHalf>>>, Option<OwnedReadHalf>),
     pub session: SsoSession
 }
 
@@ -110,7 +113,7 @@ impl Client {
         let (rx, tx) = tcp_stream.into_split();
 
         // `tcp_stream` is moved into `rx` and `tx` so it's useless now.
-        self.channel = (Some(tx), Some(rx));
+        self.channel = (Some(Arc::new(Mutex::new(tx))), Some(rx));
         self.status.set(Status::Ready, true);
         self.status.set(Status::Connected, true);
         self.status.set(Status::Disconnected, false);
@@ -134,7 +137,15 @@ impl Drop for Client {
     fn drop(&mut self) {
         self.disconnect();
         if let Some(mut tx) = self.channel.0.take() {
-            let _ = tx.shutdown();
+            match tx.lock() {
+                Ok(mut guard) => {
+                    let _ = guard.shutdown();
+                },
+                Err(poisoned) => {
+                    let mut guard = poisoned.into_inner();
+                    let _ = guard.shutdown();
+                }
+            }
         }
         self.channel = (None, None);
     }

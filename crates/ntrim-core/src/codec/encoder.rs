@@ -1,14 +1,18 @@
 use std::ops::Deref;
+use std::sync::Arc;
 use bytes::{BufMut, BytesMut};
 use once_cell::sync::Lazy;
 use prost::Message;
 use tokio_util::codec::Encoder;
 use ntrim_tools::bytes::BytePacketBuilder;
+use ntrim_tools::crypto::qqtea::qqtea_encrypt;
 
 use crate::client::Client;
 use crate::codec::CodecError;
+use crate::codec::qqsecurity::QSecurity;
+use crate::packet::packet::UniPacket;
 use crate::packet::to_service_msg::ToServiceMsg;
-use crate::pb::qqsecurity::QqSecurity;
+use crate::pb::qqsecurity::{QqSecurity, SsoMapEntry};
 use crate::sesson::protocol::Protocol;
 use crate::sesson::SsoSession;
 
@@ -16,13 +20,17 @@ pub(crate) static DEFAULT_TEA_KEY: Lazy<[u8; 16]> = Lazy::new(|| {
     [0u8; 16]
 });
 
-
 impl Encoder<ToServiceMsg> for Client {
     type Error = CodecError;
 
     fn encode(&mut self, to_service_msg: ToServiceMsg, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let uni_packet = to_service_msg.uni_packet;
         let session = &self.session;
+        let device = &session.device;
+
+        let qq_sec = generate_qqsecurity_head(
+            self, &uni_packet, (session.uin, session.uid.as_str()), &device.qimei,
+        );
 
         dst.put_packet_with_i32_len(&mut |buf| {
             let is_online = session.is_online();
@@ -37,13 +45,92 @@ impl Encoder<ToServiceMsg> for Client {
 
             let tea_key = session.get_session_key();
 
-            generate_0a_packet_head(uni_packet.command.as_str(), sso_seq, &to_service_msg.second_token, session);
+            let mut data = BytesMut::new();
+            let head_body = match session.is_online() {
+                true => generate_0a_packet_head(uni_packet.command.as_str(), sso_seq, &to_service_msg.second_token, session, &qq_sec),
+                false => generate_0b_packet_head(uni_packet.command.as_str(), session, &qq_sec)
+            };
+            data.put_bytes_with_i32_len(head_body.as_slice(), head_body.len() + 4);
+            let wup_buffer = uni_packet.to_wup_buffer();
+            data.put_bytes_with_i32_len(wup_buffer.as_slice(), wup_buffer.len() + 4);
+
+            let data = qqtea_encrypt(&data, tea_key);
+            buf.put(data.as_slice());
 
             (buf.len() + 4) as i32
         });
 
         Ok(())
     }
+}
+
+#[inline]
+fn generate_qqsecurity_head(
+    qsec: &dyn QSecurity,
+    packet: &UniPacket,
+    account: (u64, &str),
+    qimei: &str
+) -> Vec<u8> {
+    use rand::Rng;
+    use std::fmt::Write;
+
+    pub fn generate_trace() -> String {
+        let hex = "0123456789ABCDEF".chars().collect::<Vec<char>>();
+        let mut rng = rand::thread_rng();
+        let mut string = String::with_capacity(55);
+
+        write!(&mut string, "{:02X}", 0).unwrap();
+        string.push('-');
+
+        for _ in 0..32 {
+            let index = rng.gen_range(0..hex.len());
+            string.push(hex[index]);
+        }
+        string.push('-');
+
+        for _ in 0..16 {
+            let index = rng.gen_range(0..hex.len());
+            string.push(hex[index]);
+        }
+        string.push('-');
+
+        write!(&mut string, "{:02X}", 1).unwrap();
+
+        string
+    }
+
+    let mut qq_sec = QqSecurity::default();
+
+    if qsec.is_whitelist_command(&packet.command) {
+        let wup_buffer = packet.to_wup_buffer();
+
+        todo!("whitelist command")
+    } else {
+        qq_sec.flag = 1;
+    }
+
+    qq_sec.locale_id = 2052;
+    qq_sec.qimei = qimei.to_string();
+    qq_sec.trace_parent = generate_trace();
+    qq_sec.uid = account.1.to_string();
+    qq_sec.network_type = 0;
+    qq_sec.unknown = 1;
+    qq_sec.ip_stack_type = 1;
+    qq_sec.message_type = 34;
+
+    // 获取当前时间戳
+    let timestamp = chrono::Utc::now().timestamp().to_string();
+    let entry = SsoMapEntry {
+        key: "client_conn_seq".to_string(),
+        value: timestamp.into_bytes(),
+    };
+
+    qq_sec.nt_core_version = 100;
+    qq_sec.sso_ip_origin = 28;
+
+    qq_sec.trans_info.push(entry);
+
+    qq_sec.encode_to_vec()
 }
 
 /// Generate outermost packet
@@ -76,11 +163,26 @@ fn generate_surrounding_packet(
 }
 
 #[inline]
+fn generate_0b_packet_head(
+    command: &str,
+    session: &SsoSession,
+    qq_sec: &Vec<u8>
+) -> Vec<u8> {
+    let mut buf = BytesMut::new();
+    buf.put_bytes_with_i32_len(command.as_bytes(), command.len() + 4);
+    buf.put_bytes_with_i32_len(&session.msg_cookie, session.msg_cookie.len() + 4);
+    buf.put_bytes_with_i32_len(qq_sec.as_slice(), qq_sec.len() + 4);
+
+    buf.to_vec()
+}
+
+#[inline]
 fn generate_0a_packet_head(
     command: &str,
     seq: u32,
     second_token: &Option<Box<[u8]>>,
-    session: &SsoSession
+    session: &SsoSession,
+    qq_sec: &Vec<u8>
 ) -> Vec<u8> {
     let protocol = &session.protocol;
     let app_id = protocol.app_id;
@@ -105,12 +207,6 @@ fn generate_0a_packet_head(
     buf.put_bytes_with_i32_len(device.android_id.as_bytes(), device.android_id.len() + 4);
     buf.put_bytes_with_i32_len(&session.ksid, session.ksid.len() + 4);
     buf.put_bytes_with_i16_len(&protocol.detail.as_bytes(), protocol.detail.len() + 2);
-
-    let mut qq_sec = QqSecurity::default();
-    qq_sec.flag = 1;
-
-
-    let qq_sec = qq_sec.encode_to_vec();
     buf.put_bytes_with_i32_len(qq_sec.as_slice(), qq_sec.len() + 4);
 
     buf.to_vec()

@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use bytes::{BufMut, BytesMut};
 
 #[derive(Debug)]
@@ -32,7 +33,7 @@ pub struct UniPacket {
     pub command_type: CommandType,
     pub command: String,
     /// not with data length
-    pub wup_buffer: Vec<u8>,
+    pub wup_buffer: Arc<Vec<u8>>,
 }
 
 impl UniPacket {
@@ -42,7 +43,8 @@ impl UniPacket {
         wup_buffer: Vec<u8>,
     ) -> Self {
         Self {
-            command_type, command, wup_buffer
+            command_type, command,
+            wup_buffer: Arc::new(wup_buffer)
         }
     }
 
@@ -62,10 +64,7 @@ impl UniPacket {
     }
 
     /// Generate a wup buffer with data length
-    pub fn to_wup_buffer(&self) -> Vec<u8> {
-        let mut buf = BytesMut::with_capacity(self.wup_buffer.len() + 4);
-        buf.put_u32((self.wup_buffer.len() as u32) + 4);
-        buf.put_slice(&self.wup_buffer);
-        buf.to_vec()
+    pub fn to_wup_buffer(&self) -> Arc<Vec<u8>> {
+        Arc::clone(&self.wup_buffer)
     }
 }

@@ -5,6 +5,7 @@ use thiserror::Error;
 pub(crate) mod decoder;
 
 pub(crate) mod encoder;
+pub(crate) mod qqsecurity;
 
 #[derive(Error, Debug)]
 pub(crate) enum CodecError {

@@ -28,6 +28,6 @@ fn main() {
     );
 
     let buf = packet.to_wup_buffer();
-    info!("hex: {}", hex::encode(buf))
+    info!("hex: {}", hex::encode(buf.as_ref()))
 }
 
