@@ -13,11 +13,25 @@ const PROTOC_URL_OSX: &str = "https://github.com/protocolbuffers/protobuf/releas
 fn main() {
     check_protoc();
 
-    Config::new()
+    let mut config = Config::new();
+    config
         .out_dir("src/pb")
-        .include_file("mod.rs")
-        .compile_protos(&["protos/qqsecurity.proto"], &["protos"])
-        .unwrap();
+        .include_file("mod.rs");
+
+    let mut protos = Vec::new();
+    for entry in walkdir::WalkDir::new("protos") {
+        let entry = entry.unwrap();
+        if entry.file_type().is_file() {
+            if let Some(extension) = entry.path().extension() {
+                if extension == "proto" {
+                    let proto_file = entry.path().to_str().unwrap();
+                    protos.push(proto_file.to_string());
+                }
+            }
+        }
+    }
+
+    config.compile_protos(protos.as_slice(), &["protos"]).unwrap();
 }
 
 fn check_protoc() {
