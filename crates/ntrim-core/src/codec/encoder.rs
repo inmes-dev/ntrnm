@@ -1,5 +1,4 @@
 use std::ops::Deref;
-use std::sync::Arc;
 use bytes::{BufMut, BytesMut};
 use once_cell::sync::Lazy;
 use prost::Message;
@@ -9,11 +8,9 @@ use ntrim_tools::crypto::qqtea::qqtea_encrypt;
 
 use crate::client::Client;
 use crate::codec::CodecError;
-use crate::codec::qqsecurity::QSecurity;
-use crate::packet::packet::UniPacket;
+use crate::codec::qqsecurity::{QSecurityResult};
 use crate::packet::to_service_msg::ToServiceMsg;
-use crate::pb::qqsecurity::{QqSecurity, SsoMapEntry};
-use crate::sesson::protocol::Protocol;
+use crate::pb::qqsecurity::{QqSecurity, SsoMapEntry, SsoSecureInfo};
 use crate::sesson::SsoSession;
 
 pub(crate) static DEFAULT_TEA_KEY: Lazy<[u8; 16]> = Lazy::new(|| {
@@ -27,15 +24,15 @@ impl Encoder<ToServiceMsg> for Client {
         let uni_packet = to_service_msg.uni_packet;
         let session = &self.session;
         let device = &session.device;
+        let sso_seq = to_service_msg.seq;
 
         let qq_sec = generate_qqsecurity_head(
-            self, &uni_packet, (session.uin, session.uid.as_str()), &device.qimei,
+            (session.uin, session.uid.as_str()), &device.qimei, to_service_msg.sec_info
         );
 
         dst.put_packet_with_i32_len(&mut |buf| {
             let is_online = session.is_online();
             let encrypted_flag = uni_packet.get_encrypted_flag();
-            let sso_seq = to_service_msg.seq;
 
             generate_surrounding_packet(
                 buf, is_online, encrypted_flag,
@@ -66,10 +63,9 @@ impl Encoder<ToServiceMsg> for Client {
 
 #[inline]
 fn generate_qqsecurity_head(
-    qsec: &dyn QSecurity,
-    packet: &UniPacket,
     account: (u64, &str),
-    qimei: &str
+    qimei: &str,
+    qsec_info: Option<QSecurityResult>
 ) -> Vec<u8> {
     use rand::Rng;
     use std::fmt::Write;
@@ -101,14 +97,21 @@ fn generate_qqsecurity_head(
 
     let mut qq_sec = QqSecurity::default();
 
-    if qsec.is_whitelist_command(&packet.command) {
-        let wup_buffer = packet.to_wup_buffer();
-
-        todo!("whitelist command")
-    } else {
-        qq_sec.flag = 1;
+    if let Some(result) = qsec_info {
+/*        let wup_buffer = packet.to_wup_buffer();
+        let result = qsec.sign(account.0.to_string(), packet.command.clone(), wup_buffer, seq);
+        let mut sec_info = SsoSecureInfo::default();
+        sec_info.device_token.put_slice(result.token.deref());
+        sec_info.sec_sig.put_slice(result.sign.deref());
+        sec_info.extra.put_slice(result.extra.deref());
+        qq_sec.sec_info = Some(sec_info);*/
+        let mut sec_info = SsoSecureInfo::default();
+        sec_info.device_token.put_slice(result.token.deref());
+        sec_info.sec_sig.put_slice(result.sign.deref());
+        sec_info.extra.put_slice(result.extra.deref());
+        qq_sec.sec_info = Some(sec_info);
     }
-
+    qq_sec.flag = 1;
     qq_sec.locale_id = 2052;
     qq_sec.qimei = qimei.to_string();
     qq_sec.trace_parent = generate_trace();

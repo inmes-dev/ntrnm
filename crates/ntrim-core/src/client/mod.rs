@@ -121,6 +121,13 @@ impl Client {
         Ok(())
     }
 
+    async fn on_receive(&mut self) {
+        let mut rx = self.channel.1.as_mut()
+            .ok_or(ClientError::TcpNotConnectedError)?;
+        let mut buf = vec![0u8; 1024];
+
+    }
+
     pub fn is_connected(&self) -> bool {
         self.status.contains(Status::Connected)
     }

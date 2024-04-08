@@ -1,9 +1,30 @@
 use std::sync::Arc;
+use once_cell::sync::Lazy;
 
+#[derive(Debug, Clone)]
 pub(crate) struct QSecurityResult {
-    pub(crate) sign: Box<[u8]>,
-    pub(crate) salt: Box<[u8]>,
-    pub(crate) token: Box<[u8]>,
+    pub(crate) sign: Box<Vec<u8>>,
+    pub(crate) extra: Box<Vec<u8>>,
+    pub(crate) token: Box<Vec<u8>>,
+}
+
+pub(crate) static EMPTY_QSECURITY_RESULT: Lazy<QSecurityResult> = Lazy::new(||{
+    QSecurityResult {
+        sign: Box::new(Vec::new()),
+        extra: Box::new(Vec::new()),
+        token: Box::new(Vec::new()),
+    }
+});
+
+impl QSecurityResult {
+    pub(crate) fn new(sign: Box<Vec<u8>>, extra: Box<Vec<u8>>, token: Box<Vec<u8>>) -> Self {
+        Self { sign, extra, token }
+    }
+
+    #[inline]
+    pub(crate) fn new_empty() -> Self {
+        EMPTY_QSECURITY_RESULT.clone()
+    }
 }
 
 static WHITELIST_COMMANDS: [&str; 102] = [
@@ -116,8 +137,8 @@ pub(crate) trait QSecurity {
         WHITELIST_COMMANDS.contains(&cmd)
     }
 
-    fn energy(&self, data: String, salt: Box<[u8]>) -> Vec<u8>;
+    async fn energy(&self, data: String, salt: Box<[u8]>) -> Vec<u8>;
 
-    fn sign(&self, uin: String, cmd: String, buffer: Arc<Vec<u8>>, seq: u32) -> QSecurityResult;
+    async fn sign(&self, uin: String, cmd: String, buffer: Arc<Vec<u8>>, seq: u32) -> QSecurityResult;
 }
 

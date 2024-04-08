@@ -26,7 +26,7 @@ full = []
 
 [dependencies]
 ntrim-tools = { version = "0.0.1", path = "../ntrim-tools", default-features = false }
-futures = "0.3.30"
+futures = { version = "0.3.30", features = ["thread-pool"] }
 tokio = { version = "1.37.0", features = ["full"] }
 tokio-util = "0.7.10"
 bytes = "1.6.0"
