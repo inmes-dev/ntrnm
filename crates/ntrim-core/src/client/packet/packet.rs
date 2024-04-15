@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use bytes::{BufMut, BytesMut};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum CommandType {
     /// Msf Packet
     Msf,
@@ -37,6 +37,17 @@ pub struct UniPacket {
 }
 
 impl UniPacket {
+    pub fn new_service(
+        command: String,
+        wup_buffer: Vec<u8>,
+    ) -> Self {
+        Self {
+            command_type: CommandType::Service,
+            command,
+            wup_buffer: Arc::new(wup_buffer)
+        }
+    }
+
     pub fn new(
         command_type: CommandType,
         command: String,
@@ -60,6 +71,18 @@ impl UniPacket {
             CommandType::Register => 0x1,
             CommandType::Service => 0x1,
             CommandType::Heartbeat => 0x0
+        }
+    }
+
+    pub fn get_head_flag(&self) -> u32 {
+        match self.command_type {
+            CommandType::Msf => 0x1335239,
+            CommandType::CmdOpen => 0x1335239,
+            CommandType::WtLoginSt => 0xA,
+            CommandType::WtLoginSig => 0xA,
+            CommandType::Register => 0xA,
+            CommandType::Service => 0xB,
+            CommandType::Heartbeat => 0xB
         }
     }
 

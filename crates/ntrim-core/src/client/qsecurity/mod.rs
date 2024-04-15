@@ -1,14 +1,16 @@
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use once_cell::sync::Lazy;
 
 #[derive(Debug, Clone)]
-pub(crate) struct QSecurityResult {
+pub struct QSecurityResult {
     pub(crate) sign: Box<Vec<u8>>,
     pub(crate) extra: Box<Vec<u8>>,
     pub(crate) token: Box<Vec<u8>>,
 }
 
-pub(crate) static EMPTY_QSECURITY_RESULT: Lazy<QSecurityResult> = Lazy::new(||{
+pub static EMPTY_QSECURITY_RESULT: Lazy<QSecurityResult> = Lazy::new(||{
     QSecurityResult {
         sign: Box::new(Vec::new()),
         extra: Box::new(Vec::new()),
@@ -132,13 +134,14 @@ static WHITELIST_COMMANDS: [&str; 102] = [
     "ConnAuthSvr.get_auth_api_list"
 ];
 
-pub(crate) trait QSecurity {
-    fn is_whitelist_command(&self, cmd: &str) -> bool {
-        WHITELIST_COMMANDS.contains(&cmd)
+pub trait QSecurity: Send + Sync {
+    fn is_whitelist_command<'a>(&'a self, cmd: &'a str) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
+        Box::pin(async move {
+            WHITELIST_COMMANDS.contains(&cmd)
+        })
     }
 
-    async fn energy(&self, data: String, salt: Box<[u8]>) -> Vec<u8>;
+    fn energy<'a>(&'a self, data: String, salt: Box<[u8]>) -> Pin<Box<dyn Future<Output = Vec<u8>> + Send + 'a>>;
 
-    async fn sign(&self, uin: String, cmd: String, buffer: Arc<Vec<u8>>, seq: u32) -> QSecurityResult;
+    fn sign<'a>(&'a self, uin: String, cmd: String, buffer: Arc<Vec<u8>>, seq: u32) -> Pin<Box<dyn Future<Output = QSecurityResult> + Send + 'a>>;
 }
-

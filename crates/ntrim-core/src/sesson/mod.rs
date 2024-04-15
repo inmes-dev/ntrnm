@@ -1,7 +1,12 @@
+use std::cmp::PartialEq;
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::atomic::AtomicU32;
 use crate::sesson::ticket::{SigType, Ticket, TicketManager};
 use chrono::Utc;
-use crate::codec::encoder::DEFAULT_TEA_KEY;
+use crate::client::codec::encoder::DEFAULT_TEA_KEY;
+use crate::client::packet::packet::CommandType;
+use crate::client::packet::packet::CommandType::WtLoginSt;
 use crate::sesson::device::Device;
 use crate::sesson::protocol::Protocol;
 
@@ -22,10 +27,9 @@ pub struct SsoSession {
     pub(crate) ksid: [u8; 16],
     pub(crate) is_online: bool,
 
-    /// Sign server address
-    ///
-    /// e.g. "https://kritor.support/v9.0.20"
-    pub(crate) sign_server: String,
+    /// sso seq, thread safe
+    /// random from 10000 ~ 80000
+    pub(crate) sso_seq: Arc<AtomicU32>,
 }
 
 impl SsoSession {
@@ -33,22 +37,18 @@ impl SsoSession {
         account: (u64, String),
         protocol: Protocol,
         device: Device,
-        sign_server: String,
     ) -> Self {
         let msg_cookie = rand::random();
-        let sign_server = if sign_server.ends_with("/") {
-            sign_server
-        } else {
-            format!("{}/", sign_server)
-        };
         Self {
             uin: account.0,
             uid: account.1,
             tickets: HashMap::new(),
             msg_cookie, protocol, device,
             is_online: false,
-            sign_server,
             ksid: [0u8; 16],
+            sso_seq: Arc::new(AtomicU32::new(
+                rand::random::<u32>() % 70000 + 10000
+            )),
         }
     }
 
@@ -60,7 +60,10 @@ impl SsoSession {
         self.is_online && self.is_login()
     }
 
-    pub fn get_session_key(&self) -> &[u8] {
+    pub fn get_session_key(&self, command_type: CommandType) -> &[u8] {
+        if command_type == WtLoginSt {
+            return &*DEFAULT_TEA_KEY;
+        }
         if let Some(d2) = self.get(SigType::D2) {
             d2.key.as_slice()
         } else {
@@ -70,6 +73,16 @@ impl SsoSession {
 
     pub fn set_ksid(&mut self, ksid: [u8; 16]) {
         self.ksid = ksid;
+    }
+
+    pub fn next_seq(&self) -> u32 {
+        if self.sso_seq.load(std::sync::atomic::Ordering::SeqCst) > 800_0000 {
+            self.sso_seq.store(
+                rand::random::<u32>() % 70000 + 10000,
+                std::sync::atomic::Ordering::SeqCst
+            );
+        }
+        self.sso_seq.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
     }
 }
 

@@ -1,6 +1,6 @@
 
-#[derive(Debug, Clone)]
-pub(crate) struct Device {
+#[derive(Debug, Clone, Default)]
+pub struct Device {
     pub(crate) android_id: String,
     pub(crate) qimei: String,
     pub(crate) device_name: String,

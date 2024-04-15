@@ -5,12 +5,18 @@ use thiserror::Error;
 pub(crate) mod decoder;
 
 pub(crate) mod encoder;
-pub(crate) mod qqsecurity;
+
 
 #[derive(Error, Debug)]
-pub(crate) enum CodecError {
+pub enum CodecError {
     #[error("Packet codec error: {0}")]
     CodecError(Box<dyn Error>),
+    #[error("Tea_key length is invalid")]
+    InvalidTeaKey,
+    #[error("IO error")]
+    IoError,
+    #[error("Not connect to server")]
+    NotConnected
 }
 
 impl From<io::Error> for CodecError {

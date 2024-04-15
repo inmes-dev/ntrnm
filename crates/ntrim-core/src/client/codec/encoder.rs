@@ -1,15 +1,19 @@
 use std::ops::Deref;
+use std::sync::Arc;
 use bytes::{BufMut, BytesMut};
+use log::{debug, error};
 use once_cell::sync::Lazy;
 use prost::Message;
-use tokio_util::codec::Encoder;
+use tokio::sync::mpsc::Receiver;
+use tokio::sync::RwLockReadGuard;
 use ntrim_tools::bytes::BytePacketBuilder;
 use ntrim_tools::crypto::qqtea::qqtea_encrypt;
 
-use crate::client::Client;
-use crate::codec::CodecError;
-use crate::codec::qqsecurity::{QSecurityResult};
-use crate::packet::to_service_msg::ToServiceMsg;
+use crate::client::codec::CodecError;
+use crate::client::packet::packet::UniPacket;
+use crate::client::packet::to_service_msg::ToServiceMsg;
+use crate::client::qsecurity::QSecurityResult;
+use crate::client::trpc::{ClientError, TrpcClient};
 use crate::pb::qqsecurity::{QqSecurity, SsoMapEntry, SsoSecureInfo};
 use crate::sesson::SsoSession;
 
@@ -17,48 +21,81 @@ pub(crate) static DEFAULT_TEA_KEY: Lazy<[u8; 16]> = Lazy::new(|| {
     [0u8; 16]
 });
 
-impl Encoder<ToServiceMsg> for Client {
-    type Error = CodecError;
+pub(crate) trait TrpcEncoder {
+    fn init(self: &Arc<Self>, rx: Receiver<ToServiceMsg>);
+}
 
-    fn encode(&mut self, to_service_msg: ToServiceMsg, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let uni_packet = to_service_msg.uni_packet;
-        let session = &self.session;
-        let device = &session.device;
-        let sso_seq = to_service_msg.seq;
+impl TrpcEncoder for TrpcClient {
+    fn init(self: &Arc<Self>, mut rx: Receiver<ToServiceMsg>) {
+        let trpc = Arc::clone(self);
+        tokio::spawn(async move {
+            loop {
+                let session = trpc.session.read().await;
+                let packet = match rx.recv().await {
+                    Some(packet) => packet,
+                    None => {
+                        debug!("Account({:?})'s sender channel closed", session.uin);
+                        break;
+                    }
+                };
+                let mut buf = BytesMut::new();
+                if let Err(e) = encode(&session, packet, &mut buf) {
+                    error!("Failed to encode packet: {:?}", e);
+                    continue;
+                }
 
-        let qq_sec = generate_qqsecurity_head(
-            (session.uin, session.uid.as_str()), &device.qimei, to_service_msg.sec_info
+
+                trpc.client.write_data(buf).await.unwrap_or_else(|e| {
+                    error!("Failed to write data to server: {:?}", e);
+                });
+            }
+        });
+    }
+}
+
+fn encode(session: &RwLockReadGuard<SsoSession>, msg: ToServiceMsg, dst: &mut BytesMut) -> Result<(), CodecError> {
+    let uni_packet = msg.uni_packet;
+    let device = &session.device;
+    let sso_seq = msg.seq;
+
+    let qq_sec = generate_qqsecurity_head(
+        (session.uin, session.uid.as_str()), &device.qimei, msg.sec_info
+    );
+
+    let tea_key = session.get_session_key(uni_packet.command_type);
+    if tea_key.len() != 16 {
+        return Err(CodecError::InvalidTeaKey);
+    }
+
+    dst.put_packet_with_i32_len(&mut |buf| {
+        let encrypted_flag = uni_packet.get_encrypted_flag();
+        let head_flag = uni_packet.get_head_flag();
+
+        generate_surrounding_packet(
+            buf,
+            head_flag,
+            encrypted_flag,
+            sso_seq,
+            &msg.first_token,
+            session.uin.to_string().as_bytes()
         );
 
-        dst.put_packet_with_i32_len(&mut |buf| {
-            let is_online = session.is_online();
-            let encrypted_flag = uni_packet.get_encrypted_flag();
+        let mut data = BytesMut::new();
+        let head_body = match session.is_online() {
+            true => generate_0a_packet_head(uni_packet.command.as_str(), sso_seq, &msg.second_token, session, &qq_sec),
+            false => generate_0b_packet_head(uni_packet.command.as_str(), session, &qq_sec)
+        };
+        data.put_bytes_with_i32_len(head_body.as_slice(), head_body.len() + 4);
+        let wup_buffer = uni_packet.to_wup_buffer();
+        data.put_bytes_with_i32_len(wup_buffer.as_slice(), wup_buffer.len() + 4);
 
-            generate_surrounding_packet(
-                buf, is_online, encrypted_flag,
-                sso_seq, &to_service_msg.first_token,
-                session.uin.to_string().as_bytes()
-            );
+        let data = qqtea_encrypt(&data, tea_key);
+        buf.put(data.as_slice());
 
-            let tea_key = session.get_session_key();
+        (buf.len() + 4) as i32
+    });
 
-            let mut data = BytesMut::new();
-            let head_body = match session.is_online() {
-                true => generate_0a_packet_head(uni_packet.command.as_str(), sso_seq, &to_service_msg.second_token, session, &qq_sec),
-                false => generate_0b_packet_head(uni_packet.command.as_str(), session, &qq_sec)
-            };
-            data.put_bytes_with_i32_len(head_body.as_slice(), head_body.len() + 4);
-            let wup_buffer = uni_packet.to_wup_buffer();
-            data.put_bytes_with_i32_len(wup_buffer.as_slice(), wup_buffer.len() + 4);
-
-            let data = qqtea_encrypt(&data, tea_key);
-            buf.put(data.as_slice());
-
-            (buf.len() + 4) as i32
-        });
-
-        Ok(())
-    }
+    Ok(())
 }
 
 #[inline]
@@ -140,17 +177,13 @@ fn generate_qqsecurity_head(
 #[inline]
 fn generate_surrounding_packet(
     buf: &mut BytesMut,
-    is_online: bool,
+    head_flag: u32,
     encrypted_flag: u8,
     seq: u32,
     first_token: &Option<Box<[u8]>>,
     uin: &[u8]
 ) {
-    if is_online {
-        buf.put_u32(0xB);
-    } else {
-        buf.put_u32(0xA);
-    }
+    buf.put_u32(head_flag);
     buf.put_u8(encrypted_flag);
     if encrypted_flag == 0x1 {
         buf.put_u32(seq);
