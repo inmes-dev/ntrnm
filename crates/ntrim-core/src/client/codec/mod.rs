@@ -16,7 +16,7 @@ pub enum CodecError {
     #[error("IO error")]
     IoError,
     #[error("Not connect to server")]
-    NotConnected
+    NotConnectError
 }
 
 impl From<io::Error> for CodecError {

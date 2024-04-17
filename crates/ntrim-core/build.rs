@@ -66,7 +66,7 @@ fn try_install_protoc() {
     let target = env::var("TARGET").unwrap();
     let is_win = target.contains("windows");
 
-    /// if bin/protoc exists, return
+    // if bin/protoc exists, return
     let current_dir = env::current_dir().unwrap();
     let protoc_path = current_dir.join("bin").join(if is_win { "protoc.exe" } else { "protoc" });
     if protoc_path.exists() {
@@ -94,7 +94,7 @@ fn try_install_protoc() {
         println!("Failed to download protoc: {}", status);
         exit(1);
     }
-    /// write it into protoc.zip, if it exists, overwrite it.
+    // write it into protoc.zip, if it exists, overwrite it.
     let mut file = File::create("protoc.zip").unwrap();
     file.write_all(&resp.bytes().unwrap()).unwrap();
 
@@ -104,7 +104,7 @@ fn try_install_protoc() {
     archive.extract("")
         .expect("Failed to extract protoc");
 
-    /// remove `protoc.zip` and `include` dir
+    // remove `protoc.zip` and `include` dir
     fs::remove_file("protoc.zip").unwrap();
     fs::remove_file("readme.txt").unwrap();
     fs::remove_dir_all("include").unwrap();
@@ -115,7 +115,7 @@ fn try_install_protoc() {
         "protoc"
     };
 
-    /// add the protoc to `PROTOC`
+    // add the protoc to `PROTOC`
     let current_dir = env::current_dir().unwrap();
     let protoc_path = current_dir.join("bin").join(protoc);
     println!("protoc path: {:?}", protoc_path);

@@ -64,7 +64,7 @@ impl SsoSession {
         if command_type == WtLoginSt {
             return &*DEFAULT_TEA_KEY;
         }
-        if let Some(d2) = self.get(SigType::D2) {
+        if let Some(d2) = self.ticket(SigType::D2) {
             d2.key.as_slice()
         } else {
             &*DEFAULT_TEA_KEY
@@ -91,7 +91,7 @@ impl TicketManager for SsoSession {
         self.tickets.insert(ticket.id, ticket);
     }
 
-    fn get(&self, id: SigType) -> Option<&Ticket> {
+    fn ticket(&self, id: SigType) -> Option<&Ticket> {
         self.tickets.get(&id)
     }
 
@@ -108,7 +108,7 @@ impl TicketManager for SsoSession {
     }
 
     fn is_expired(&self, id: SigType) -> bool {
-        if let Some(ticket) = self.get(id) {
+        if let Some(ticket) = self.ticket(id) {
             if ticket.expire_time == 0 {
                 return false;
             }

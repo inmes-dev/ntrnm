@@ -22,7 +22,7 @@ pub(crate) trait TrpcDecoder {
 
 impl TrpcDecoder for TrpcClient {
     fn init(self: &Arc<Self>) {
-        let reader = self.client.get_reader();
+        let reader = self.client.reader();
         let trpc = Arc::clone(self);
         tokio::spawn(async move {
             let mut reader = reader.lock().await;
@@ -46,7 +46,7 @@ impl TrpcDecoder for TrpcClient {
                     }
                 }
                 let mut src = BytesMut::from(data.as_slice());
-                let head_flag = src.get_u32();
+                let _head_flag = src.get_u32();
                 let encrypted_flag = src.get_u8();
                 let session = trpc.session.read().await;
 
@@ -83,9 +83,9 @@ impl TrpcDecoder for TrpcClient {
                     _ => body
                 };
                 let from_service_msg = FromServiceMsg::new(cmd, body, seq);
-                let dispenser = Arc::clone(&trpc.dispenser);
+                let dispatcher = Arc::clone(&trpc.dispatcher);
                 tokio::spawn(async move {
-                    dispenser.dispatch(from_service_msg).await;
+                    dispatcher.dispatch(from_service_msg).await;
                 });
             }
         });

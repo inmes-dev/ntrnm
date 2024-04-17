@@ -2,7 +2,7 @@ use std::error::Error;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use bitflags::bitflags;
-use bytes::{Buf, BytesMut};
+use bytes::BytesMut;
 use log::{error, info};
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
@@ -37,15 +37,15 @@ bitflags! {
 #[derive(Error, Debug)]
 pub enum ClientError {
     #[error("DNS query error")]
-    DnsQueryError,
+    QueryDnsError,
     #[error("TCP connect error")]
-    TcpConnectError,
+    ConnectError,
     #[error("TCP not connected")]
-    TcpNotConnectedError,
+    NotConnectError,
     #[error("TCP write error: {0}")]
-    TcpWriteError(Box<dyn Error>),
+    WriteError(Box<dyn Error>),
     #[error("TCP read error: {0}")]
-    TcpReadError(Box<dyn Error>),
+    ReadError(Box<dyn Error>),
 }
 
 type TrpcWriteChannel = Arc<Mutex<OwnedWriteHalf>>;
@@ -83,11 +83,11 @@ impl TcpClient {
             Ok(result) => result.collect(),
             Err(e) => {
                 error!("Failed to query for address: {}", e);
-                return Err(ClientError::DnsQueryError);
+                return Err(ClientError::QueryDnsError);
             }
         };
         return if addrs.is_empty() {
-            Err(ClientError::DnsQueryError)
+            Err(ClientError::QueryDnsError)
         } else {
             Ok(addrs)
         }
@@ -101,7 +101,7 @@ impl TcpClient {
             Ok(result) => result,
             Err(e) => {
                 error!("Failed to connect server: {}", e);
-                return Err(ClientError::TcpConnectError);
+                return Err(ClientError::ConnectError);
             }
         };
 
@@ -116,13 +116,13 @@ impl TcpClient {
         Ok(())
     }
 
-    pub(crate) fn get_reader(&self) -> TrpcReadChannel {
+    pub(crate) fn reader(&self) -> TrpcReadChannel {
         Arc::clone(self.channel.1.as_ref().unwrap())
     }
 
     pub(crate) async fn write_data(&self, mut data: BytesMut) -> Result<(), ClientError> {
         if !self.is_connected() {
-            return Err(ClientError::TcpNotConnectedError);
+            return Err(ClientError::NotConnectError);
         }
         let tx = self.channel.0.as_ref().unwrap();
         let mut guard = tx.lock().await;
@@ -130,7 +130,7 @@ impl TcpClient {
             Ok(_) => Ok(()),
             Err(e) => {
                 error!("Failed to write data to tcp stream: {}", e);
-                Err(ClientError::TcpWriteError(Box::new(e)))
+                Err(ClientError::WriteError(Box::new(e)))
             }
         }
     }
