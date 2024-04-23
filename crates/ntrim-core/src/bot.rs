@@ -1,22 +1,24 @@
 use std::error::Error;
-use crate::client::Client;
-use crate::sesson::protocol::Protocol;
+use std::sync::Arc;
+pub use rc_box::ArcBox;
+use crate::client::qsecurity::QSecurity;
+use crate::client::trpc::TrpcClient;
 use crate::sesson::SsoSession;
 
 pub struct Bot {
     /// TCP client.
-    client: Client,
+    client: Arc<TrpcClient>,
 }
 
 impl Bot {
-    pub fn new(
-        sso_session: SsoSession
+    pub async fn new(
+        session: SsoSession,
+        qsec_mod: Arc<dyn QSecurity>,
     ) -> Result<Self, Box<dyn Error>> {
-        let bot = Self {
-            client: Client::new_ipv4_client(sso_session),
-        };
-
-        Ok(bot)
+        let client = TrpcClient::new(session, qsec_mod).await?;
+        Ok(Self {
+            client
+        })
     }
 
 

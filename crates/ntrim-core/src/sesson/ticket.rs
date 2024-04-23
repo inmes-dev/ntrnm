@@ -81,7 +81,7 @@ macro_rules! create_ticket {
 pub trait TicketManager {
     fn insert(&mut self, ticket: Ticket);
 
-    fn get(&self, id: SigType) -> Option<&Ticket>;
+    fn ticket(&self, id: SigType) -> Option<&Ticket>;
 
     fn remove(&mut self, id: SigType) -> Option<Ticket>;
 
