@@ -35,3 +35,4 @@ expanded.rs
 crates/ntrim-core/bin/*
 crates/ntrim-core/src/pb/*
 config.toml
+account.json

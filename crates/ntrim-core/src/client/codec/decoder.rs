@@ -1,6 +1,7 @@
 use std::sync::Arc;
+use std::sync::atomic::Ordering::SeqCst;
 use bytes::{Buf, BufMut, BytesMut};
-use log::debug;
+use log::{debug, warn};
 use tokio::io::AsyncReadExt;
 use tokio::net::tcp::OwnedReadHalf;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -13,8 +14,9 @@ use crate::client::codec::encoder::DEFAULT_TEA_KEY;
 use crate::client::packet::from_service_msg::FromServiceMsg;
 use crate::client::packet::packet::CommandType::Service;
 use crate::client::packet::to_service_msg::ToServiceMsg;
+use crate::client::tcp::TcpStatus;
 use crate::client::trpc::TrpcClient;
-use crate::sesson::SsoSession;
+use crate::session::SsoSession;
 
 pub(crate) trait TrpcDecoder {
     fn init(self: &Arc<Self>);
@@ -31,6 +33,13 @@ impl TrpcDecoder for TrpcClient {
                     return;
                 }
                 let packet_size = match reader.read_u32().await {
+                    Ok(0) => {
+                        warn!("Connection closed by peer: {:?}", trpc.client);
+                        let mut status = TcpStatus::from_bits(trpc.client.status.load(SeqCst)).unwrap();
+                        status.set(TcpStatus::Lost, true);
+                        trpc.client.status.store(status.bits(), SeqCst);
+                        break;
+                    }
                     Ok(size) => size,
                     Err(e) => {
                         debug!("Failed to read packet size: {}", e);

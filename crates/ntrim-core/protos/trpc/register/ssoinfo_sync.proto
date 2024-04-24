@@ -2,6 +2,10 @@ syntax = "proto3";
 
 package trpc.register;
 
+message SsoC2CMsgCookie {
+  uint64 c2c_last_msg_time = 2;
+}
+
 message SsoC2CSyncInfo {
   bytes c2c_msg_cookie = 1;
   uint64 c2c_last_msg_time = 2;
@@ -12,7 +16,8 @@ message DeviceInfo {
   string dev_name = 1;
   string dev_type = 2;
   string os_ver = 3;
-  bytes vendor_os_name = 4;
+  string brand = 4;
+  string vendor_os_name = 5;
 }
 
 message OnLineBusinessInfo {
@@ -69,4 +74,8 @@ message SsoSyncInfoRequest {
   RegisterInfo register_info = 9;
   UnknownStructure unknown = 10;
   CurAppState app_state = 11;
+}
+
+message SsoSyncInfoResponse {
+
 }

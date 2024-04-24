@@ -38,9 +38,9 @@ bitflags! {
 pub struct Ticket {
     pub id: SigType,
     /// e.g. skey or d2key
-    pub key: Vec<u8>,
+    pub sig_key: Vec<u8>,
     /// e.g. d2
-    pub value: Option<Vec<u8>>,
+    pub sig: Option<Vec<u8>>,
     pub create_time: u64,
     /// 0 means never expire
     /// unit is seconds -> expires after n seconds
@@ -50,8 +50,8 @@ pub struct Ticket {
 
 impl Display for Ticket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let hex_key = hex::encode(&self.key);
-        let hex_value = match &self.value {
+        let hex_key = hex::encode(&self.sig_key);
+        let hex_value = match &self.sig {
             Some(value) => hex::encode(value),
             None => "None".to_string(),
         };
@@ -64,16 +64,16 @@ macro_rules! create_ticket {
     ($id:expr, $key:expr) => {
         Ticket {
             id: $id,
-            key: $key,
-            value: None,
+            sig_key: $key,
+            sig: None,
         }
     };
 
     ($id:expr, $key:expr, $value:expr) => {
         Ticket {
             id: $id,
-            key: $key,
-            value: Some($value),
+            sig_key: $key,
+            sig: Some($value),
         }
     };
 }

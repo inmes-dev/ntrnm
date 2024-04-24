@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use log::error;
+use log::{error, info};
 use tokio::sync::{mpsc, Mutex, oneshot};
 use crate::client::packet::from_service_msg::FromServiceMsg;
 
@@ -18,6 +18,13 @@ impl TrpcDispatcher {
         }
     }
 
+    pub async fn clear(&self) {
+        let mut persistent = self.persistent.lock().await;
+        persistent.clear();
+        let mut oneshot = self.oneshot.lock().await;
+        oneshot.clear();
+    }
+
     pub async fn register_persistent(&self, cmd: String, sender: mpsc::Sender<FromServiceMsg>) {
         let mut persistent = self.persistent.lock().await;
         persistent.insert(cmd, sender);
@@ -31,6 +38,8 @@ impl TrpcDispatcher {
     pub(crate) async fn dispatch(self: Arc<Self>, msg: FromServiceMsg) {
         let cmd = msg.command.clone();
         let seq = msg.seq;
+
+        info!("Dispatching packet, cmd: {}, seq: {}", cmd, seq);
 
         let persistent = self.persistent.lock().await;
         if let Some(sender) = persistent.get(&cmd) {

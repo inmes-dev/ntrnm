@@ -15,7 +15,7 @@ use crate::client::packet::to_service_msg::ToServiceMsg;
 use crate::client::qsecurity::QSecurityResult;
 use crate::client::trpc::{ClientError, TrpcClient};
 use crate::pb::qqsecurity::{QqSecurity, SsoMapEntry, SsoSecureInfo};
-use crate::sesson::SsoSession;
+use crate::session::SsoSession;
 
 pub(crate) static DEFAULT_TEA_KEY: Lazy<[u8; 16]> = Lazy::new(|| {
     [0u8; 16]
@@ -27,7 +27,7 @@ pub(crate) trait TrpcEncoder {
 
 impl TrpcEncoder for TrpcClient {
     fn init(self: &Arc<Self>, mut rx: Receiver<ToServiceMsg>) {
-        let trpc = Arc::clone(self);
+        let mut trpc = Arc::clone(self);
         tokio::spawn(async move {
             loop {
                 let session = trpc.session.read().await;
@@ -43,7 +43,6 @@ impl TrpcEncoder for TrpcClient {
                     error!("Failed to encode packet: {:?}", e);
                     continue;
                 }
-
 
                 trpc.client.write_data(buf).await.unwrap_or_else(|e| {
                     error!("Failed to write data to server: {:?}", e);
@@ -135,13 +134,6 @@ fn generate_qqsecurity_head(
     let mut qq_sec = QqSecurity::default();
 
     if let Some(result) = qsec_info {
-/*        let wup_buffer = packet.to_wup_buffer();
-        let result = qsec.sign(account.0.to_string(), packet.command.clone(), wup_buffer, seq);
-        let mut sec_info = SsoSecureInfo::default();
-        sec_info.device_token.put_slice(result.token.deref());
-        sec_info.sec_sig.put_slice(result.sign.deref());
-        sec_info.extra.put_slice(result.extra.deref());
-        qq_sec.sec_info = Some(sec_info);*/
         let mut sec_info = SsoSecureInfo::default();
         sec_info.device_token.put_slice(result.token.deref());
         sec_info.sec_sig.put_slice(result.sign.deref());
@@ -180,7 +172,7 @@ fn generate_surrounding_packet(
     head_flag: u32,
     encrypted_flag: u8,
     seq: u32,
-    first_token: &Option<Box<[u8]>>,
+    first_token: &Option<Box<Vec<u8>>>,
     uin: &[u8]
 ) {
     buf.put_u32(head_flag);
@@ -216,7 +208,7 @@ fn generate_0b_packet_head(
 fn generate_0a_packet_head(
     command: &str,
     seq: u32,
-    second_token: &Option<Box<[u8]>>,
+    second_token: &Option<Box<Vec<u8>>>,
     session: &SsoSession,
     qq_sec: &Vec<u8>
 ) -> Vec<u8> {

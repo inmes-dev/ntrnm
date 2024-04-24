@@ -19,12 +19,12 @@ pub static EMPTY_QSECURITY_RESULT: Lazy<QSecurityResult> = Lazy::new(||{
 });
 
 impl QSecurityResult {
-    pub(crate) fn new(sign: Box<Vec<u8>>, extra: Box<Vec<u8>>, token: Box<Vec<u8>>) -> Self {
+    pub fn new(sign: Box<Vec<u8>>, extra: Box<Vec<u8>>, token: Box<Vec<u8>>) -> Self {
         Self { sign, extra, token }
     }
 
     #[inline]
-    pub(crate) fn new_empty() -> Self {
+    pub fn new_empty() -> Self {
         EMPTY_QSECURITY_RESULT.clone()
     }
 }
@@ -140,6 +140,8 @@ pub trait QSecurity: Send + Sync {
             WHITELIST_COMMANDS.contains(&cmd)
         })
     }
+
+    fn ping<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>>;
 
     fn energy<'a>(&'a self, data: String, salt: Box<[u8]>) -> Pin<Box<dyn Future<Output = Vec<u8>> + Send + 'a>>;
 

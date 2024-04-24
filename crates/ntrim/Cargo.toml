@@ -21,11 +21,13 @@ categories = ["web-programming", "api-bindings", "asynchronous"]
 
 
 [features]
-default = ["rustls"]
+default = ["rustls", "onebot"]
 native-tls = ["ntrim-core/native-tls"]
 rustls = ["ntrim-core/rustls"]
 
-full = []
+# backend
+onebot = []
+kritor = []
 
 
 [dependencies]
@@ -34,7 +36,14 @@ ntrim-tools = { version = "0.0.1", path = "../ntrim-tools", default-features = f
 
 clap = { version = "4.5.4", features = ["derive"] }
 pretty_env_logger = "0.5.0"
-
+reqwest = { version = "0.12.2", features = [
+    "json",
+    "stream",
+    "multipart",
+    "gzip",
+    "deflate",
+    "http2",
+], default-features = false }
 serde_json = "1.0.115"
 serde_toml = "0.0.1"
 serde = { version = "1.0.197", features = ["derive"] }
@@ -42,19 +51,22 @@ serde_derive = "1.0.197"
 
 tokio = { version = "1.37.0", features = ["full"] }
 tokio-stream = "0.1.15"
+trust-dns-resolver = "0.23.2"
+surge-ping = "0.8.1"
 
+anyhow = "1.0.82"
 url = "2.5.0"
 log = "0.4.21"
 bytes = "1.6.0"
-mime = "0.3.17"
 derive_more = "0.99.17"
 thiserror = "1.0.58"
-futures = "0.3.30"
+chrono = { version = "0.4.37", features = ["now"] }
 
 bincode = { version = "2.0.0-rc.3" }
 rand = { version = "0.8.5" }
 hex = "0.4.3"
 toml = "0.8.12"
+time = "0.3.36"
 
 [dev-dependencies]
 rand = "0.8.5"
