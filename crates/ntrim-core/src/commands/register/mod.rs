@@ -9,10 +9,8 @@ use crate::pb;
 impl crate::bot::Bot {
     async fn generate(bot: &Arc<Self>) -> Option<Vec<u8>> {
         let rand = rand::random::<u32>();
-        let current_time = chrono::Utc::now().timestamp();
 
-        info!("Generating register request time: {:?}", current_time);
-        let mut session = bot.client.session.write().await;
+        let session = bot.client.session.read().await;
         let protocol = &(session.protocol);
         let device = &(session.device);
         info!("Generating register request for bot: {:?}", session.uid);
@@ -80,7 +78,7 @@ impl crate::bot::Bot {
                 silence_status: 0
             })
         };
-        session.last_grp_msg_time = current_time as u64;
+        //session.last_grp_msg_time = current_time as u64;
         Some(req.encode_to_vec())
     }
 

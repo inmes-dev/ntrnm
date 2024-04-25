@@ -18,7 +18,7 @@ use crate::session::ticket::{SigType, TicketManager};
 
 pub struct TrpcClient {
     pub(crate) client: TcpClient,
-    pub(crate) session: Arc<RwLock<SsoSession>>,
+    pub(crate) session: RwLock<SsoSession>,
     pub(crate) qsec: Arc<dyn QSecurity>,
     pub(crate) sender: Arc<Sender<ToServiceMsg>>,
     pub(crate) dispatcher: Arc<TrpcDispatcher>
@@ -55,7 +55,7 @@ impl TrpcClient {
         let trpc = Arc::new(Self {
             client,
             qsec: qsec_mod,
-            session: Arc::new(RwLock::new(session)),
+            session: RwLock::new(session),
             sender: Arc::new(tx),
             dispatcher: Arc::new(TrpcDispatcher::new()),
         });

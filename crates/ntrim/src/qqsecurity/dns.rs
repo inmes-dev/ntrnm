@@ -1,16 +1,22 @@
+use std::collections::HashMap;
 use std::future::Future;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Duration;
 use rand::random;
 use reqwest::dns::{Name, Resolve, Resolving};
 use surge_ping::{Client, Config, IcmpPacket, PingIdentifier, PingSequence};
+use tokio::sync::Mutex;
 use tokio::task;
 use tokio::time::interval;
 use trust_dns_resolver::config::{NameServerConfig, Protocol, ResolverConfig, ResolverOpts};
 use trust_dns_resolver::TokioAsyncResolver;
 
-pub struct Resolver(TokioAsyncResolver);
+pub struct Resolver(
+    TokioAsyncResolver,
+    Arc<Mutex<HashMap<String, IpAddr>>>
+);
 
 impl Resolver {
     pub fn new() -> Resolver {
@@ -39,6 +45,7 @@ impl Resolver {
         opts.num_concurrent_reqs = dns_servers.len();
         Resolver(
             TokioAsyncResolver::tokio(rc, opts),
+            Arc::new(Mutex::new(HashMap::new()))
         )
     }
 }
@@ -70,7 +77,15 @@ async fn ping(client: Client, addr: IpAddr) -> f64 {
 impl Resolve for Resolver {
     fn resolve(&self, name: Name) -> Resolving {
         let resolver = self.0.clone();
+        let dns_cache = self.1.clone();
         Box::pin(async move {
+            let mut dns_cache = dns_cache.lock().await;
+            if let Some(addr) = dns_cache.get(name.as_str()) {
+                return Ok(Box::new(vec![
+                    SocketAddr::new(*addr, 0)
+                ].into_iter()) as Box<_>);
+            }
+
             let ips = resolver.lookup_ip(name.as_str()).await?;
             let addrs = ips
                 .into_iter()
@@ -93,6 +108,8 @@ impl Resolve for Resolver {
             }
 
             info!("Preferred IP completed: {} => {:?}, time: {:0.2?}s", name.as_str(), suggested_ip, min_cost / 5.0);
+
+            dns_cache.insert(name.as_str().to_string(), suggested_ip.unwrap());
 
             Ok(Box::new(vec![SocketAddr::new(suggested_ip.unwrap(), 0)].into_iter()) as Box<_>)
         })

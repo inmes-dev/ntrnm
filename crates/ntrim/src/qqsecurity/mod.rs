@@ -70,6 +70,7 @@ impl QSecurity for QSecurityViaHTTP {
 
     fn sign<'a>(&'a self, uin: String, cmd: String, buffer: Arc<Vec<u8>>, seq: u32) -> Pin<Box<dyn Future<Output=QSecurityResult> + Send + 'a>> {
         Pin::from(Box::new(async move {
+            let start = std::time::Instant::now();
             let buffer = hex::encode(buffer.as_slice());
             let urlencoded = reqwest::multipart::Form::new()
                 .text("uin", uin)
@@ -91,6 +92,8 @@ impl QSecurity for QSecurityViaHTTP {
                 log::error!("Failed to get sign response ret: {}, msg: {}", ret, msg);
                 return QSecurityResult::new_empty();
             }
+            let cost_time = start.elapsed().as_millis();
+            info!("Sign request cost: {}ms", cost_time);
             let data = response["data"].as_object().unwrap();
             let sign = data["sign"].as_str().unwrap();
             let token = data["token"].as_str().unwrap();
