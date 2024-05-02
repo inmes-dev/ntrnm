@@ -22,6 +22,7 @@ pub async fn login_by_session(session_path: String, config: &Config) -> Receiver
     }).unwrap();
     let (mut tx, rx) = mpsc::channel(1);
     tokio::spawn(async move {
+        //Bot::check_phsig_lcid(&bot).await;
         let resp_recv = Bot::register(&bot).await.unwrap();
         match resp_recv.await {
             Ok(resp) => {

@@ -1,4 +1,5 @@
 use std::ops::Deref;
+use std::process::exit;
 use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
 use ntrim_core::session::device::Device;
@@ -63,7 +64,15 @@ pub fn load_session(path: &str) -> SsoSession {
     let uid = session_data["uid"].as_str().unwrap();
     let ksid = hex::decode(session_data["ksid"].as_str().unwrap()).unwrap();
     let guid = hex::decode(session_data["guid"].as_str().unwrap()).unwrap();
-    let android_id = session_data["android_id"].as_str().unwrap();
+    let mut android_id = session_data["android_id"].as_str().unwrap();
+    if android_id.len() > 16 {
+        warn!("Android id is too long, maybe it's not a valid android id: {}", android_id);
+        android_id = &android_id[..16];
+        warn!("Truncated android id to: {}", android_id)
+    } else if android_id.len() < 16 {
+        error!("Android id is too short, maybe it's not a valid android id: {}", android_id);
+        exit(1);
+    }
     let dev_name = session_data["dev_name"].as_str().unwrap();
     let os_ver = session_data["os_ver"].as_str().unwrap();
     let fingerprint = hex::decode(session_data["fingerprint"].as_str().unwrap()).unwrap();

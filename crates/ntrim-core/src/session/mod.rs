@@ -54,7 +54,7 @@ impl SsoSession {
             is_online: false,
             ksid, guid,
             sso_seq: Arc::new(AtomicU32::new(
-                rand::random::<u32>() % 70000 + 10000
+                rand::random::<u32>() % 70000 + 20000
             )),
             last_c2c_msg_time: 0,
             last_grp_msg_time: 0,
@@ -83,7 +83,7 @@ impl SsoSession {
     pub fn next_seq(&self) -> u32 {
         if self.sso_seq.load(std::sync::atomic::Ordering::SeqCst) > 800_0000 {
             self.sso_seq.store(
-                rand::random::<u32>() % 70000 + 10000,
+                rand::random::<u32>() % 70000 + 20000,
                 std::sync::atomic::Ordering::SeqCst
             );
         }

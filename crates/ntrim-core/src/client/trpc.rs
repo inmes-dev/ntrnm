@@ -1,5 +1,7 @@
+use std::fmt::Write;
 use std::sync::Arc;
-use log::{debug, error, info};
+use bytes::{BufMut, BytesMut};
+use log::{debug, error, info, warn};
 use rc_box::ArcBox;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{oneshot, RwLock};
@@ -7,7 +9,7 @@ use crate::client::codec::decoder::TrpcDecoder;
 use crate::client::codec::encoder::TrpcEncoder;
 use crate::client::dispatcher::TrpcDispatcher;
 use crate::client::packet::from_service_msg::FromServiceMsg;
-use crate::client::packet::packet::CommandType::{Register, Service};
+use crate::client::packet::packet::CommandType::{*};
 pub use crate::client::tcp::ClientError;
 use crate::client::tcp::{TcpStatus, TcpClient};
 use crate::client::packet::packet::UniPacket;
@@ -18,7 +20,7 @@ use crate::session::ticket::{SigType, TicketManager};
 
 pub struct TrpcClient {
     pub(crate) client: TcpClient,
-    pub(crate) session: RwLock<SsoSession>,
+    pub(crate) session: Arc<RwLock<SsoSession>>,
     pub(crate) qsec: Arc<dyn QSecurity>,
     pub(crate) sender: Arc<Sender<ToServiceMsg>>,
     pub(crate) dispatcher: Arc<TrpcDispatcher>
@@ -47,6 +49,17 @@ impl TrpcClient {
                 return Err(e);
             }
         }
+        {
+            let mut buf = BytesMut::new();
+            buf.put_u32(21);
+            buf.put_u32(0x01335239);
+            buf.put_u32(0x00000000);
+            buf.put_u8(0x4);
+            buf.write_str("MSF").unwrap();
+            buf.put_u8(0x5);
+            buf.put_u32(0x00000000);
+            client.write_data(buf).await.unwrap();
+        }
 
         let (tx, rx) = tokio::sync::mpsc::channel(match option_env!("NT_SEND_QUEUE_SIZE") {
             None => 32,
@@ -55,7 +68,7 @@ impl TrpcClient {
         let trpc = Arc::new(Self {
             client,
             qsec: qsec_mod,
-            session: RwLock::new(session),
+            session: Arc::new(RwLock::new(session)),
             sender: Arc::new(tx),
             dispatcher: Arc::new(TrpcDispatcher::new()),
         });
@@ -85,10 +98,36 @@ impl TrpcClient {
 
     pub async fn send_uni_packet(self: &Arc<TrpcClient>, uni_packet: UniPacket) -> Option<oneshot::Receiver<FromServiceMsg>> {
         let (tx, rx) = oneshot::channel();
-        let session = self.session.read().await;
+        let session = self.session.clone();
+        let session = session.read().await;
+        debug!("Fetch session rwlock: {:?}", session);
+
         let seq = session.next_seq();
-        info!("Sending packet with seq: {}, cmd: {}", seq, uni_packet.command);
+        let cmd = uni_packet.command.clone();
+
+        let sec_info = if self.qsec.is_whitelist_command(cmd.as_str()).await {
+            Some(self.qsec.sign(
+                session.uin.to_string(),
+                uni_packet.command.clone(),
+                uni_packet.wup_buffer.clone(),
+                seq
+            ).await)
+        } else {
+            None
+        };
+
         let mut msg = ToServiceMsg::new(uni_packet, seq);
+        if let Some(sec_info) = sec_info {
+            if sec_info.sign.is_empty() {
+                error!("Failed to sign packet, seq: {}, cmd: {}", seq, cmd);
+                return None;
+            } else {
+                msg.sec_info = Option::from(sec_info);
+            }
+        }
+
+        info!("Send packet, seq: {}, cmd: {}", seq, cmd);
+
         match msg.uni_packet.command_type {
             Register => {
                 let d2 = session.ticket(SigType::D2).unwrap();
@@ -99,6 +138,9 @@ impl TrpcClient {
                 msg.second_token = Some(Box::new(tgt));
             }
             Service => {
+                // nothing
+            }
+            WtLoginSt => {
                 // nothing
             }
             _ => {

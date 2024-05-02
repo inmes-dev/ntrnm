@@ -88,7 +88,7 @@ impl QSecurity for QSecurityViaHTTP {
             let response: serde_json::Value = serde_json::from_str(&response).unwrap();
             let ret = response["retcode"].as_u64().unwrap_or(1);
             if ret != 0 {
-                let msg = response["message"].as_str().unwrap();
+                let msg = response["message"].as_str().unwrap_or_else(|| "Unknown error");
                 log::error!("Failed to get sign response ret: {}, msg: {}", ret, msg);
                 return QSecurityResult::new_empty();
             }

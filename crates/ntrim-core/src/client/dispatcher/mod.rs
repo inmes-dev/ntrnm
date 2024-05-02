@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use log::{error, info};
+use log::{debug, error, info};
 use tokio::sync::{mpsc, Mutex, oneshot};
 use crate::client::packet::from_service_msg::FromServiceMsg;
 
@@ -39,7 +39,7 @@ impl TrpcDispatcher {
         let cmd = msg.command.clone();
         let seq = msg.seq;
 
-        info!("Dispatching packet, cmd: {}, seq: {}", cmd, seq);
+        debug!("Dispatching packet, cmd: {}, seq: {}", cmd, seq);
 
         let persistent = self.persistent.lock().await;
         if let Some(sender) = persistent.get(&cmd) {

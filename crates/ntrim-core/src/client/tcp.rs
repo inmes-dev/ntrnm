@@ -5,17 +5,18 @@ use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering::SeqCst;
 use bitflags::bitflags;
 use bytes::BytesMut;
-use log::{error, info};
+use log::{debug, error, info};
 use thiserror::Error;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncWriteExt, Interest};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::TcpStream;
+use tokio::net::{TcpSocket, TcpStream};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
+use url::Host::Ipv4;
 use crate::client::packet::packet::UniPacket;
 use crate::session::SsoSession;
 
-const NT_V4_SERVER: &str = "msfwifi.3g.qq.com";
+const NT_V4_SERVER: &str = "111.30.187.201";
 const NT_V6_SERVER: &str = "msfwifiv6.3g.qq.com";
 
 bitflags! {
@@ -84,7 +85,7 @@ impl TcpClient {
             NT_V6_SERVER
         };
         info!("Querying for address: {}", server);
-        let addrs: Vec<SocketAddr> = match tokio::net::lookup_host((server, 8080)).await {
+        let addrs: Vec<SocketAddr> = match tokio::net::lookup_host((server, 443)).await {
             Ok(result) => result.collect(),
             Err(e) => {
                 error!("Failed to query for address: {}", e);
@@ -100,9 +101,16 @@ impl TcpClient {
 
     pub(crate) async fn connect(&mut self) -> Result<(), ClientError> {
         let addrs = self.query_for_address().await?;
-        let addr = addrs.first().unwrap();
+        let addr = addrs.first().unwrap().clone();
+        let mut status = TcpStatus::from_bits(self.status.load(SeqCst)).unwrap();
+
         info!("Connecting to server: {}", addr);
-        let mut tcp_stream = match TcpStream::connect(addr).await {
+        let tcp = if status.contains(TcpStatus::Ipv4Addr) {
+            TcpSocket::new_v4()
+        } else {
+            TcpSocket::new_v6()
+        }.unwrap();
+        let mut tcp_stream = match tcp.connect(addr).await {
             Ok(result) => result,
             Err(e) => {
                 error!("Failed to connect server: {}", e);
@@ -111,10 +119,8 @@ impl TcpClient {
         };
 
         let (rx, tx) = tcp_stream.into_split();
-
-        // `tcp_stream` is moved into `rx` and `tx` so it's useless now.
-        let mut status = TcpStatus::from_bits(self.status.load(SeqCst)).unwrap();
         self.channel = (Some(Arc::new(Mutex::new(tx))), Some(Arc::new(Mutex::new(rx))));
+
         status.set(TcpStatus::Ready, true);
         status.set(TcpStatus::Connected, true);
         status.set(TcpStatus::Disconnected, false);
@@ -132,14 +138,21 @@ impl TcpClient {
         if !self.is_connected() {
             return Err(ClientError::NotConnectError);
         }
-        let tx = self.channel.0.as_ref().unwrap();
+        let tx = self.channel.0.as_ref().unwrap().clone();
         let mut guard = tx.lock().await;
-        match guard.write_all_buf(&mut data).await {
-            Ok(n) => Ok(n),
-            Err(e) => {
-                error!("Failed to write data to tcp stream: {}", e);
-                Err(ClientError::WriteError(Box::new(e)))
-            }
+        if let Err(e) = guard.writable().await {
+            error!("Tcp stream is not writable: {:?}", e);
+            return Err(ClientError::NotConnectError);
+        }
+
+        //info!("Writing data to server: {}", hex::encode(data.as_ref()));
+
+        if let Err(e) = guard.write_all_buf(&mut data).await {
+            error!("Failed to write data to server: {:?}", e);
+            return Err(ClientError::WriteError(Box::new(e)));
+        } else {
+            debug!("Data written to server: {}", data.len());
+            Ok(())
         }
     }
 

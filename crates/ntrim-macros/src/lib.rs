@@ -12,6 +12,7 @@ use ::syn::{*,
             spanned::Spanned,
             Result, // explicitly shadow Result
 };
+use log::info;
 use crate::command::CommandType;
 
 
@@ -72,10 +73,14 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
         panic!("Invalid CommandType: {:?}", args.flags)
     };
 
+    let impl_name = impl_item.self_ty.to_token_stream().to_string();
+    let impl_name = impl_name.split("::").last().unwrap();
+    let impl_name = Ident::new(impl_name, Span::call_site());
+
     let f: TokenStream2 = quote! {
         pub async fn #service(#input) -> Option<Receiver<#output>> {
             let (tx, rx) = tokio::sync::oneshot::channel();
-            let data = match Self::generate(#input_args).await {
+            let data = match #impl_name::generate(#input_args).await {
                 None => return None,
                 Some(data) => data
             };
@@ -105,7 +110,7 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
                 };
                 let data = match data {
                     None => None,
-                    Some(data) => match Self::parse(&bot, data.wup_buffer.to_vec()).await {
+                    Some(data) => match #impl_name::parse(&bot, data.wup_buffer.to_vec()).await {
                         None => None,
                         Some(data) => Some(data)
                     }
@@ -117,8 +122,9 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
             return Some(rx)
         }
     };
+    info!("Generated command: {}", f.to_string());
     // 将f添加进item_impl
-    impl_item.items.push(ImplItem::Verbatim(f.to_string().parse().unwrap()));
+    //impl_item.items.push(ImplItem::Verbatim(f.to_string().parse().unwrap()));
 
     return TokenStream::from(quote! {
         use tokio::sync::oneshot::Receiver;
@@ -129,7 +135,12 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
         use crate::client::packet::from_service_msg::FromServiceMsg;
         use std::sync::Arc;
         use log::{debug, error};
+        use crate::bot::Bot;
 
         #impl_item
+
+        impl crate::bot::Bot {
+            #f
+        }
     });
 }
