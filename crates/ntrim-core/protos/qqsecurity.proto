@@ -1,45 +1,45 @@
-syntax = "proto3";
+syntax = "proto2";
 
 package qqsecurity;
 
 message SsoTrpcResponse {
-  int32 ret_code = 1;
-  int32 func_ret_code = 2;
-  string ret_msg = 3;
+  required int32 ret_code = 1;
+  required int32 func_ret_code = 2;
+  required string ret_msg = 3;
 }
 
 message SsoMapEntry {
-  string key = 1;
-  bytes value = 2;
+  required string key = 1;
+  required bytes value = 2;
 }
 
 message SsoSecureInfo {
-  bytes sec_sig = 1;
-  bytes device_token = 2;
-  bytes extra = 3;
+  required bytes sec_sig = 1;
+  required bytes device_token = 2;
+  required bytes extra = 3;
 }
 
 message QQSecurity {
-  bytes client_ip_cookie = 8;
-  uint32 flag = 9;
-  uint32 env_id = 10;
-  uint32 locale_id = 11;
-  string qimei = 12;
-  string env = 13;
-  uint32 newconn_flag = 14;
-  string trace_parent = 15;
-  string uid = 16;
-  string imsi = 17;
-  uint32 network_type = 18;
-  uint32 unknown = 19;
-  uint32 ip_stack_type = 20;
-  uint32 message_type = 21;
-  SsoTrpcResponse trpc_rsp = 22;
+  optional bytes client_ip_cookie = 8;
+  required uint32 flag = 9;
+  optional uint32 env_id = 10;
+  required uint32 locale_id = 11;
+  required string qimei = 12;
+  optional string env = 13;
+  required uint32 newconn_flag = 14;
+  required string trace_parent = 15;
+  required string uid = 16;
+  optional string imsi = 17;
+  required uint32 network_type = 18;
+  required uint32 unknown = 19;
+  required uint32 ip_stack_type = 20;
+  required uint32 message_type = 21;
+  optional SsoTrpcResponse trpc_rsp = 22;
   repeated SsoMapEntry trans_info = 23;
-  SsoSecureInfo sec_info = 24;
-  uint32 sec_sig_flag = 25;
-  uint32 nt_core_version = 26;
-  uint32 sso_route_cost = 27;
-  uint32 sso_ip_origin = 28;
-  bytes presure_token = 30;
+  optional SsoSecureInfo sec_info = 24;
+  optional uint32 sec_sig_flag = 25;
+  required uint32 nt_core_version = 26;
+  optional uint32 sso_route_cost = 27;
+  required uint32 sso_ip_origin = 28;
+  optional bytes presure_token = 30;
 }

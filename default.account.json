@@ -1,0 +1,22 @@
+{
+  "uid": "u_***********",
+  "ksid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "dev_name": "LGE-AN10",
+  "os_ver": "12",
+  "fingerprint": "0a93aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "vendor_os_name": "NTRNM Project",
+  "guid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "uin": "12345678",
+  "android_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "brand": "Xiaomi",
+  "os_name": "MIUI",
+  "code": "elish".
+  "ticket": {
+    "2097152": {
+      "sig": "",
+      "sigKey": "",
+      "createTime": 0,
+      "expireTime": 0
+    }
+  }
+}

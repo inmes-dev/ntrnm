@@ -1,0 +1,13 @@
+[qsign]
+# 签名服务器地址
+# 默认的签名地址延迟有点高
+# 如果需求低延迟，请使用香港或其它区域的服务器代理转发即可...
+server = "https://kritor.support/v9.0.20"
+
+[developer]
+
+[sql]
+# 是否启用数据库
+# 启用数据库之后，可以使用获取历史消息功能
+enable = false
+address = "postgres://postgres:password@localhost/test"

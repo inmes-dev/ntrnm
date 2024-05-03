@@ -79,8 +79,7 @@ $ ntrnm --help
 
 This crate is licensed under either of
 
- * [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
- * [MIT license](http://opensource.org/licenses/MIT)
+ * [GPLv3 license](https://opensource.org/license/gpl-3-0)
 
 at your option.
 

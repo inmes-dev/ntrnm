@@ -1,24 +1,27 @@
 use std::error::Error;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU32;
+use std::sync::atomic::Ordering::SeqCst;
 use bitflags::bitflags;
 use bytes::BytesMut;
-use log::{error, info};
+use log::{debug, error, info};
 use thiserror::Error;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncWriteExt, Interest};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::TcpStream;
+use tokio::net::{TcpSocket, TcpStream};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
+use url::Host::Ipv4;
 use crate::client::packet::packet::UniPacket;
-use crate::sesson::SsoSession;
+use crate::session::SsoSession;
 
 const NT_V4_SERVER: &str = "msfwifi.3g.qq.com";
 const NT_V6_SERVER: &str = "msfwifiv6.3g.qq.com";
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct Status: u32 {
+    pub struct TcpStatus: u32 {
         /// The client has an IPv6 address.
         const Ipv6Addr =       0b00000001;
         /// The client has an IPv4 address.
@@ -31,6 +34,8 @@ bitflags! {
         const Connecting =      0b00010000;
         /// The client is ready to connect.
         const Ready =           0b00100000;
+        /// Loss of connection.
+        const Lost =            0b01000000;
     }
 }
 
@@ -53,27 +58,28 @@ type TrpcReadChannel = Arc<Mutex<OwnedReadHalf>>;
 
 #[derive(Debug)]
 pub(crate) struct TcpClient {
-    pub(crate) status: Status,
+    pub(crate) status: AtomicU32,
     pub(crate) channel: (Option<TrpcWriteChannel>, Option<TrpcReadChannel>),
 }
 
 impl TcpClient {
     pub fn new_ipv6_client() -> Self {
         Self {
-            status: Status::Ipv6Addr | Status::Ready,
+            status: AtomicU32::new((TcpStatus::Ipv6Addr | TcpStatus::Ready).bits()),
             channel: (None, None),
         }
     }
 
     pub fn new_ipv4_client() -> Self {
         Self {
-            status: Status::Ipv4Addr | Status::Ready,
+            status: AtomicU32::new((TcpStatus::Ipv4Addr | TcpStatus::Ready).bits()),
             channel: (None, None),
         }
     }
 
     async fn query_for_address(&self) -> Result<Vec<SocketAddr>, ClientError> {
-        let server = if self.status.contains(Status::Ipv4Addr) {
+        let status = TcpStatus::from_bits(self.status.load(SeqCst)).unwrap();
+        let server = if status.contains(TcpStatus::Ipv4Addr) {
             NT_V4_SERVER
         } else {
             NT_V6_SERVER
@@ -95,9 +101,16 @@ impl TcpClient {
 
     pub(crate) async fn connect(&mut self) -> Result<(), ClientError> {
         let addrs = self.query_for_address().await?;
-        let addr = addrs.first().unwrap();
+        let addr = addrs.first().unwrap().clone();
+        let mut status = TcpStatus::from_bits(self.status.load(SeqCst)).unwrap();
+
         info!("Connecting to server: {}", addr);
-        let mut tcp_stream = match TcpStream::connect(addr).await {
+        let tcp = if status.contains(TcpStatus::Ipv4Addr) {
+            TcpSocket::new_v4()
+        } else {
+            TcpSocket::new_v6()
+        }.unwrap();
+        let mut tcp_stream = match tcp.connect(addr).await {
             Ok(result) => result,
             Err(e) => {
                 error!("Failed to connect server: {}", e);
@@ -106,12 +119,13 @@ impl TcpClient {
         };
 
         let (rx, tx) = tcp_stream.into_split();
-
-        // `tcp_stream` is moved into `rx` and `tx` so it's useless now.
         self.channel = (Some(Arc::new(Mutex::new(tx))), Some(Arc::new(Mutex::new(rx))));
-        self.status.set(Status::Ready, true);
-        self.status.set(Status::Connected, true);
-        self.status.set(Status::Disconnected, false);
+
+        status.set(TcpStatus::Ready, true);
+        status.set(TcpStatus::Connected, true);
+        status.set(TcpStatus::Disconnected, false);
+        status.set(TcpStatus::Lost, false);
+        self.status.store(status.bits(), SeqCst);
 
         Ok(())
     }
@@ -124,26 +138,36 @@ impl TcpClient {
         if !self.is_connected() {
             return Err(ClientError::NotConnectError);
         }
-        let tx = self.channel.0.as_ref().unwrap();
+        let tx = self.channel.0.as_ref().unwrap().clone();
         let mut guard = tx.lock().await;
-        match guard.write_all_buf(&mut data).await {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                error!("Failed to write data to tcp stream: {}", e);
-                Err(ClientError::WriteError(Box::new(e)))
-            }
+        if let Err(e) = guard.writable().await {
+            error!("Tcp stream is not writable: {:?}", e);
+            return Err(ClientError::NotConnectError);
+        }
+
+        //info!("Writing data to server: {}", hex::encode(data.as_ref()));
+
+        if let Err(e) = guard.write_all_buf(&mut data).await {
+            error!("Failed to write data to server: {:?}", e);
+            return Err(ClientError::WriteError(Box::new(e)));
+        } else {
+            debug!("Data written to server: {}", data.len());
+            Ok(())
         }
     }
 
     pub fn is_connected(&self) -> bool {
-        self.status.contains(Status::Connected)
+        let status = TcpStatus::from_bits(self.status.load(SeqCst)).unwrap();
+        status.contains(TcpStatus::Connected) && !status.contains(TcpStatus::Lost)
     }
 
     /// close the connection, please use std::drop instead of this method.
     pub(crate) async fn disconnect(&mut self) {
-        self.status.set(Status::Connected, false);
-        self.status.set(Status::Disconnected, true);
-        self.status.set(Status::Ready, false);
+        let mut status = TcpStatus::from_bits(self.status.load(SeqCst)).unwrap();
+        status.set(TcpStatus::Connected, false);
+        status.set(TcpStatus::Disconnected, true);
+        status.set(TcpStatus::Ready, false);
+        self.status.store(status.bits(), SeqCst);
         if let Some(mut tx) = self.channel.0.take() {
             let mut guard = tx.lock().await;
             let result = guard.shutdown().await;

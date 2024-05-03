@@ -1,3 +1,5 @@
+use std::fs::{read_to_string, write};
+use std::future::Future;
 use std::path::PathBuf;
 use serde_derive::{Deserialize, Serialize};
 use toml::Value;
@@ -16,7 +18,6 @@ pub struct QSign {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Developer {
-    pub debug: bool
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -25,9 +26,9 @@ pub struct Sql {
     pub address: String,
 }
 
-pub fn parse_local_config_file(path: PathBuf) -> Option<Config> {
+pub fn parse_local_config(path: PathBuf) -> Option<Config> {
     info!("Local config file: {}", path.to_str().unwrap());
-    if let Ok(contents) = std::fs::read_to_string(path) {
+    if let Ok(contents) = read_to_string(path) {
         let config: Config = toml::from_str(&contents).unwrap();
         return Some(config);
     } else {
@@ -38,7 +39,7 @@ pub fn parse_local_config_file(path: PathBuf) -> Option<Config> {
 
 pub fn save_config_file(path: PathBuf, config: Config) {
     let toml = toml::to_string(&config).unwrap();
-    if let Err(e) = std::fs::write(path, toml) {
+    if let Err(e) = write(path, toml) {
         error!("Failed to write config file: {}", e);
     }
 }

@@ -1,0 +1,49 @@
+[package]
+name = "ntrim-macros"
+version = "0.0.1"
+description = "ntrim Process-Macro"
+
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+documentation = "https://github.com/inmes-dev/ntrnm"
+readme = "../../README.md"
+
+keywords = ["ntrim", "oicq", "qqbot", "icqq", "bot"]
+categories = ["api-bindings", "asynchronous"]
+
+[features]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2.0.60", features = ["full", "derive"] }
+quote = "1.0.36"
+proc-macro2 = "1.0"
+bitflags = "2.5.0"
+log = "0.4.21"
+
+[build-dependencies]
+
+
+[dev-dependencies]
+
+[package.metadata.docs.rs]
+features = ["full", "nightly", "tokio/rt-multi-thread"]
+rustdoc-args = ["--cfg", "docsrs", "-Znormalize-docs"]
+
+# https://github.com/rust-lang/rust/issues/88791
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
+
+[package.metadata.release]
+tag-prefix = "core-"
+enable-features = ["full"]
+pre-release-replacements = [
+    { file = "README.md", search = "ntrim-macros = \"[^\"]+\"", replace = "ntrim-macros = \"{{version}}\"" },
+    { file = "src/lib.rs", search = "ntrim-macros = \"[^\"]+\"", replace = "ntrim-macros = \"{{version}}\"" },
+    { file = "CHANGELOG.md", search = "## unreleased", replace = "## unreleased\n\n## {{version}} - {{date}}", exactly = 1 },
+]

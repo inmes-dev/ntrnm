@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use log::error;
+use log::{debug, error, info};
 use tokio::sync::{mpsc, Mutex, oneshot};
 use crate::client::packet::from_service_msg::FromServiceMsg;
 
@@ -18,13 +18,22 @@ impl TrpcDispatcher {
         }
     }
 
+    pub async fn clear(&self) {
+        let mut persistent = self.persistent.lock().await;
+        persistent.clear();
+        let mut oneshot = self.oneshot.lock().await;
+        oneshot.clear();
+    }
+
     pub async fn register_persistent(&self, cmd: String, sender: mpsc::Sender<FromServiceMsg>) {
         let mut persistent = self.persistent.lock().await;
+        debug!("Registering persistent, cmd: {}", cmd);
         persistent.insert(cmd, sender);
     }
 
     pub async fn register_oneshot(&self, seq: u32, sender: oneshot::Sender<FromServiceMsg>) {
         let mut oneshot = self.oneshot.lock().await;
+        debug!("Registering oneshot, seq: {}", seq);
         oneshot.insert(seq, sender);
     }
 
@@ -32,20 +41,27 @@ impl TrpcDispatcher {
         let cmd = msg.command.clone();
         let seq = msg.seq;
 
-        let persistent = self.persistent.lock().await;
-        if let Some(sender) = persistent.get(&cmd) {
-            if let Err(e) = sender.send(msg).await {
-                error!("Failed to send message to persistent map, dispatcher: {:?}, cmd: {}, err: {:?}", self, cmd, e);
-            }
-            return;
-        }
+        debug!("Dispatching packet, cmd: {}, seq: {}", cmd, seq);
 
-        let mut oneshot = self.oneshot.lock().await;
-        if let Some(sender) = oneshot.remove(&seq) {
-            if let Err(msg) = sender.send(msg) {
-                error!("Failed to send message to oneshot map, dispatcher: {:?}, seq: {}, msg: {:?}", self, seq, msg);
+        if seq <= 0 {
+            let persistent = self.persistent.lock().await;
+            if let Some(sender) = persistent.get(&cmd) {
+                if let Err(e) = sender.send(msg).await {
+                    error!("Failed to send message to persistent map, dispatcher: {:?}, cmd: {}, err: {:?}", self, cmd, e);
+                }
+                return;
             }
-            return;
+        } else {
+            let seq = seq as u32;
+            let mut oneshot = self.oneshot.lock().await;
+            if let Some(sender) = oneshot.remove(&seq) {
+                if let Err(msg) = sender.send(msg) {
+                    error!("Failed to send message to oneshot map, dispatcher: {:?}, seq: {}, msg: {:?}", self, seq, msg);
+                }
+                return;
+            }
+
+            error!("Failed to dispatch packet, seq: {}, cmd: {}", seq, cmd);
         }
     }
 }

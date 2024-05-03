@@ -44,7 +44,7 @@ rand = "0.9.0-alpha.1"
 byteorder = "1.5.0"
 generic-array = "1.0.0"
 typenum = "1.17.0"
-flate2 = "1.0.28"
+flate2 = { version = "1.0.17", features = ["zlib-ng"], default-features = false }
 
 [dev-dependencies]
 tokio = { version = "1.37.0", features = ["full"] }
