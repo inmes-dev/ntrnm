@@ -99,6 +99,8 @@ fn encode(session: &RwLockReadGuard<SsoSession>, msg: ToServiceMsg, dst: &mut By
         buf.put(data.as_slice());
     }, PacketFlag::I32Len | PacketFlag::ExtraLen);
 
+    //info!("Encoded packet: {:?}", hex::encode(dst));
+
     Ok(())
 }
 
@@ -108,11 +110,11 @@ fn generate_qqsecurity_head(
     qimei: &str,
     qsec_info: Option<QSecurityResult>
 ) -> Vec<u8> {
-    use rand::Rng;
+    /*use rand::Rng;
     use std::fmt::Write;
 
     pub fn generate_trace() -> String {
-        let hex = "0123456789abcdef".chars().collect::<Vec<char>>();
+        let hex = "0123456789abcf".chars().collect::<Vec<char>>();
         let mut rng = rand::thread_rng();
         let mut string = String::with_capacity(55);
 
@@ -134,7 +136,7 @@ fn generate_qqsecurity_head(
         write!(&mut string, "{:02X}", 0).unwrap();
 
         string
-    } // 00-05b4b2f95cc99439d5ee97c2b61f68be-1a08105332e004e2-00
+    } // */
 
     let mut qq_sec = QqSecurity::default();
 
@@ -147,9 +149,9 @@ fn generate_qqsecurity_head(
     }
     qq_sec.flag = 1;
     qq_sec.locale_id = 2052;
-    qq_sec.qimei = qimei.to_string(); //0902564ff81969dfb3596f2010001f91760e
+    qq_sec.qimei = "0902564ff81969dfb3596f2010001f91760e".to_string(); //0902564ff81969dfb3596f2010001f91760e
     qq_sec.newconn_flag = 0;
-    qq_sec.trace_parent = generate_trace();
+    qq_sec.trace_parent = "00-00000000000000000000000000000000-0000000000000000-00".to_string();
     qq_sec.uid = account.1.to_string();
     qq_sec.network_type = 0;
     qq_sec.unknown = 1;
@@ -224,11 +226,13 @@ fn generate_0a_packet_head(
 
     buf.put_u32(seq);
     buf.put_u32(app_id);
-    buf.put_u32(app_id);
-    buf.put_u32(16777216);
-    buf.put_u32(0);
+    buf.put_u32(app_id); // mqq
+    //buf.put_u32(2052); // nt
+
+    buf.put_u32(0x1_00_00_00);
+    buf.put_u32(0x0);
     if let Some(second_token) = second_token {
-        buf.put_u32(256);
+        buf.put_u32(0x1_00);
         buf.put_bytes_with_flags(second_token, PacketFlag::I32Len | PacketFlag::ExtraLen);
     } else {
         buf.put_u32(0);

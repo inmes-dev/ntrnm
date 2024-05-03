@@ -95,7 +95,7 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
             };
             let bot = Arc::clone(bot);
             tokio::spawn(async move {
-                let data = match timeout(tokio::time::Duration::from_secs(120), recv).await {
+                let data = match timeout(tokio::time::Duration::from_secs(15), recv).await {
                     Ok(result) => match result {
                         Ok(result) => Some(result),
                         Err(e) => {
@@ -104,7 +104,7 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
                         }
                     },
                     Err(_) => {
-                        debug!("Service(#service) timed out");
+                        warn!("Service(#service) timed out");
                         None
                     }
                 };
@@ -134,7 +134,7 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
         use crate::client::packet::packet::{CommandType, UniPacket};
         use crate::client::packet::from_service_msg::FromServiceMsg;
         use std::sync::Arc;
-        use log::{debug, error};
+        use log::{debug, error, warn};
         use crate::bot::Bot;
 
         #impl_item

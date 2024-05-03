@@ -16,7 +16,7 @@ use url::Host::Ipv4;
 use crate::client::packet::packet::UniPacket;
 use crate::session::SsoSession;
 
-const NT_V4_SERVER: &str = "111.30.187.201";
+const NT_V4_SERVER: &str = "msfwifi.3g.qq.com";
 const NT_V6_SERVER: &str = "msfwifiv6.3g.qq.com";
 
 bitflags! {
@@ -85,7 +85,7 @@ impl TcpClient {
             NT_V6_SERVER
         };
         info!("Querying for address: {}", server);
-        let addrs: Vec<SocketAddr> = match tokio::net::lookup_host((server, 443)).await {
+        let addrs: Vec<SocketAddr> = match tokio::net::lookup_host((server, 8080)).await {
             Ok(result) => result.collect(),
             Err(e) => {
                 error!("Failed to query for address: {}", e);

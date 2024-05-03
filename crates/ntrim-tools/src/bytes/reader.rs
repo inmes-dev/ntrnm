@@ -15,17 +15,20 @@ pub trait BytePacketReader: Buf {
     fn get_bytes_with_flags(&mut self, packet_flag: PacketFlag) -> Vec<u8>
         where Self: Sized
     {
+        let mut tmp = 0;
         let mut len = if packet_flag.contains(PacketFlag::I16Len) {
+            if packet_flag.contains(PacketFlag::ExtraLen) { tmp = 2; }
             self.get_i16() as usize
         } else if packet_flag.contains(PacketFlag::I32Len) {
+            if packet_flag.contains(PacketFlag::ExtraLen) { tmp = 4; }
             self.get_i32() as usize
         } else if packet_flag.contains(PacketFlag::I64Len) {
+            if packet_flag.contains(PacketFlag::ExtraLen) { tmp = 8; }
             self.get_i64() as usize
         } else {
             panic!("Invalid packet flag: {:?}", packet_flag);
         };
-        if packet_flag.contains(PacketFlag::ExtraLen) { len -= 4; }
-        let mut buf = vec![0u8; len];
+        let mut buf = vec![0u8; len - tmp];
         self.copy_to_slice(&mut buf);
         buf
     }

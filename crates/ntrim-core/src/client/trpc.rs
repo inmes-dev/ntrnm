@@ -126,7 +126,7 @@ impl TrpcClient {
             }
         }
 
-        info!("Send packet, seq: {}, cmd: {}", seq, cmd);
+        info!("Send packet, cmd: {}, seq: {}", cmd, seq);
 
         match msg.uni_packet.command_type {
             Register => {
@@ -153,6 +153,10 @@ impl TrpcClient {
             return None;
         }
         return Some(rx);
+    }
+
+    pub async fn register_persistent(self: &Arc<TrpcClient>, cmd: String, sender: Sender<FromServiceMsg>) {
+        self.dispatcher.register_persistent(cmd, sender).await;
     }
 
     pub async fn disconnect(&mut self) {

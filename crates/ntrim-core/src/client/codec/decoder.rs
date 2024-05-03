@@ -78,7 +78,7 @@ impl TrpcDecoder for TrpcClient {
                 let mut src = buffer.as_slice();
                 let head_flag = src.get_u32();
                 if head_flag == 0x01335239 {
-                    info!("Recv hello from server: MSF");
+                    debug!("Recv hello from server: MSF");
                     continue;
                 }
                 let encrypted_flag = src.get_u8();
@@ -110,7 +110,7 @@ impl TrpcDecoder for TrpcClient {
 
                 let mut body = vec![0u8; (data.get_u32() - 4) as usize];
                 data.copy_to_slice(&mut body);
-                info!("Recv packet body: {:?}", hex::encode(&body));
+                //info!("Recv packet body: {:?}", hex::encode(&body));
                 let body = match compression {
                     0 => body,
                     4 => body,
@@ -130,10 +130,10 @@ impl TrpcDecoder for TrpcClient {
 }
 
 #[inline]
-fn parse_head(data: &mut BytesMut) -> (u32, String, u32) {
+fn parse_head(data: &mut BytesMut) -> (i32, String, u32) {
     let head_length = data.get_u32() - 4;
     let mut head_data = data.split_to(head_length as usize);
-    let seq = head_data.get_u32();
+    let seq = head_data.get_i32();
     head_data.advance(4); // skip repeated 0
     let unknown_token_len = (head_data.get_u32() - 4) as usize;
     head_data.advance(unknown_token_len); // skip unknown tk

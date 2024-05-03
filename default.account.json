@@ -8,7 +8,9 @@
   "guid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "uin": "12345678",
   "android_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  "brand": "HONOR",
+  "brand": "Xiaomi",
+  "os_name": "MIUI",
+  "code": "elish".
   "ticket": {
     "2097152": {
       "sig": "",

@@ -30,7 +30,7 @@ pub fn save_session(path: &str, session: &SsoSession) {
     data.insert("dev_name".to_string(), serde_json::Value::String(device.device_name.to_string()));
     data.insert("os_ver".to_string(), serde_json::Value::String(device.os_ver.to_string()));
     data.insert("fingerprint".to_string(), serde_json::Value::String(hex::encode(device.fingerprint.as_ref())));
-    data.insert("brand".to_string(), serde_json::Value::String(device.device_model.to_string()));
+    data.insert("brand".to_string(), serde_json::Value::String(device.brand.to_string()));
     data.insert("vendor_os_name".to_string(), serde_json::Value::String(device.vendor_os_name.to_string()));
     let mut ticket = serde_json::Map::new();
     for (id, t) in &session.tickets {
@@ -75,6 +75,8 @@ pub fn load_session(path: &str) -> SsoSession {
     }
     let dev_name = session_data["dev_name"].as_str().unwrap();
     let os_ver = session_data["os_ver"].as_str().unwrap();
+    let code = session_data["code"].as_str().unwrap();
+    let os_name = session_data["os_name"].as_str().unwrap();
     let fingerprint = hex::decode(session_data["fingerprint"].as_str().unwrap()).unwrap();
     let brand = session_data["brand"].as_str().unwrap();
     let vendor_os_name = session_data["vendor_os_name"].as_str().unwrap();
@@ -87,6 +89,8 @@ pub fn load_session(path: &str) -> SsoSession {
         os_ver.to_string(),
         vendor_os_name.to_string(),
         fingerprint,
+        code.to_string(),
+        os_name.to_string()
     );
 
     let protocol = QQ_9_0_20.deref();

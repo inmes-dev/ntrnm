@@ -1,4 +1,3 @@
-
 use log::info;
 use ntrim_macros::command;
 

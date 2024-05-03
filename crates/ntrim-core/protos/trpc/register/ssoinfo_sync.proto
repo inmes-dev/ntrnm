@@ -3,7 +3,7 @@ syntax = "proto2";
 package trpc.register;
 
 message SsoC2CMsgCookie {
-  required uint64 c2c_last_msg_time = 1;
+  optional uint64 c2c_last_msg_time = 1;
 }
 
 message SsoC2CSyncInfo {
@@ -76,6 +76,10 @@ message SsoSyncInfoRequest {
   required CurAppState app_state = 11;
 }
 
-message SsoSyncInfoResponse {
+message RegisterResponse {
+  required string msg = 2;
+}
 
+message SsoSyncInfoResponse {
+  optional RegisterResponse register_response = 7;
 }

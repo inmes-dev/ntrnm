@@ -6,3 +6,4 @@ pub mod commands;
 
 /// Only current module can access the global module.
 pub(crate) mod pb;
+pub(crate) mod servlet;

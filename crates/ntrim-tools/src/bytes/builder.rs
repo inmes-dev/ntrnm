@@ -25,14 +25,20 @@ pub trait BytePacketBuilder: BufMut {
         where Self: Sized
     {
         let mut len = bytes.len();
-        if flag.contains(PacketFlag::ExtraLen) {
-            len += 4;
-        }
         if flag.contains(PacketFlag::I16Len) {
+            if flag.contains(PacketFlag::ExtraLen) {
+                len += 2;
+            }
             self.put_i16(len as i16);
         } else if flag.contains(PacketFlag::I32Len) {
+            if flag.contains(PacketFlag::ExtraLen) {
+                len += 4;
+            }
             self.put_i32(len as i32);
         } else if flag.contains(PacketFlag::I64Len) {
+            if flag.contains(PacketFlag::ExtraLen) {
+                len += 8;
+            }
             self.put_i64(len as i64);
         }
         self.put_slice(bytes);
