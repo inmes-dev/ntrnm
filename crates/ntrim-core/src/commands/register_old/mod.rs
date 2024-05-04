@@ -39,10 +39,6 @@ impl RegisterBuilder {
         let str = String::from_utf8(data).unwrap();
         println!("recv: {}", str);
 
-        if str.contains("success") {
-            Bot::getDynamicPluginList(bot).await;
-        }
-
         Some(SsoSyncInfoResponse::default())
     }
 }

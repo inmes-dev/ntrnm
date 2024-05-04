@@ -1,23 +1,19 @@
 use std::sync::Arc;
 use log::info;
+use ntrim_macros::servlet;
 use crate::bot::Bot;
+use crate::client::packet::FromServiceMsg;
 
 pub struct SyncPushServlet(Arc<Bot>);
 
+#[servlet("trpc.msg.register_proxy.RegisterProxy.InfoSyncPush", "trpc.msg.register_proxy.RegisterProxy.PushParams")]
 impl SyncPushServlet {
-    pub async fn register(bot: &Arc<Bot>) {
-        let servlet = Arc::new(Self(bot.clone()));
-        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
-        bot.client.register_persistent("trpc.msg.register_proxy.RegisterProxy.SsoInfoSync".to_string(), tx).await;
-        info!("Registered sync push servlet");
-        tokio::spawn(async move {
-            loop {
-                if let Some(from) = rx.recv().await {
+    async fn dispatch(servlet: &SyncPushServlet, from: FromServiceMsg) {
 
-                }
-            }
-        });
+
     }
+
+
 }
 
 

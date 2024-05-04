@@ -1,4 +1,5 @@
 mod command;
+mod servlet;
 
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
@@ -142,5 +143,76 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
         impl crate::bot::Bot {
             #f
         }
+    });
+}
+
+#[proc_macro_attribute]
+pub fn servlet(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    let mut impl_item = parse_macro_input!(item as ItemImpl);
+    let args = parse_macro_input!(attrs as servlet::ServletArgs);
+    let impl_items = &impl_item.items;
+    let fun_map: HashMap<String, &ImplItemFn> = impl_items.iter().filter_map(|item| {
+        match item {
+            ImplItem::Fn(f) => {
+                let fn_name = f.sig.ident.to_string();
+                Some((fn_name, f))
+            }
+            _ => None
+        }
+    }).collect();
+    if fun_map.is_empty() {
+        panic!("No function found in servlet");
+    }
+    let fun_map = fun_map.iter().filter(|(k, f)| {
+        let input_args = f.sig.inputs.clone().iter().map(|arg| {
+            match arg {
+                FnArg::Typed(pat) => {
+                    let pat = pat.ty.to_token_stream();
+                    quote! { #pat, }
+                }
+                _ => quote! {}
+            }
+        }).collect::<TokenStream2>().to_string();
+        let input_args = input_args.split(",").map(|s| s.to_string()).collect::<Vec<String>>();
+        input_args.len() >= 2 && input_args[1].trim().ends_with("FromServiceMsg")
+    }).map(|(n, f)| f.clone()).collect::<Vec<&ImplItemFn>>();
+
+    if fun_map.is_empty() {
+        panic!("No function with FromServiceMsg input found in servlet");
+    }
+
+    let impl_name = impl_item.self_ty.to_token_stream().to_string();
+    let impl_name = impl_name.split("::").last().unwrap();
+    let impl_name = Ident::new(impl_name, Span::call_site());
+
+    let commands = args.cmds; // 转换为vec
+    let commands = commands.iter().map(|cmd| {
+        let cmd = cmd.to_string();
+        quote! { #cmd.to_string(), }
+    }).collect::<TokenStream2>();
+
+    let f: TokenStream2 = quote! {
+        pub async fn initialize(bot: &Arc<Bot>) {
+            let servlet = Arc::new(Self(bot.clone()));
+            let cmds = vec![
+                #commands
+            ];
+            let (tx, mut rx) = tokio::sync::mpsc::channel(cmds.len());
+            bot.client.register_multiple_persistent(cmds, tx).await;
+            tokio::spawn(async move {
+                loop {
+                    if rx.is_closed() { break }
+                    if let Some(from) = rx.recv().await {
+                        Self::dispatch(&servlet, from).await;
+                    }
+                }
+            });
+        }
+    };
+    info!("Generated command: {}", f.to_string());
+    impl_item.items.push(ImplItem::Verbatim(f.to_string().parse().unwrap()));
+
+    return TokenStream::from(quote! {
+        #impl_item
     });
 }

@@ -43,7 +43,7 @@ impl Bot {
             status: AtomicU32::new(BotStatus::Offline.bits()),
         });
 
-        SyncPushServlet::register(&bot).await;
+        SyncPushServlet::initialize(&bot).await;
 
         Ok(bot)
     }
