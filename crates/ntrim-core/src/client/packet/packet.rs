@@ -11,10 +11,13 @@ pub enum CommandType {
 
     /// Wtlogin packet
     /// build for login
+    Login,
+
     /// build for refresh st or sig
-    WtLoginSt,
+    ExchangeSt,
+
     /// Sig == Web Cookie
-    WtLoginSig,
+    ExchangeSig,
 
     /// Cmd Register
     /// request to go live!!!
@@ -66,11 +69,12 @@ impl UniPacket {
         match self.command_type {
             CommandType::Msf => 0x0,
             CommandType::CmdOpen => 0x0,
-            CommandType::WtLoginSt => 0x2,
-            CommandType::WtLoginSig => 0x2,
+            CommandType::ExchangeSt => 0x2,
+            CommandType::ExchangeSig => 0x2,
             CommandType::Register => 0x1,
             CommandType::Service => 0x1,
-            CommandType::Heartbeat => 0x0
+            CommandType::Heartbeat => 0x0,
+            CommandType::Login => 0x2
         }
     }
 
@@ -78,11 +82,12 @@ impl UniPacket {
         match self.command_type {
             CommandType::Msf => 0x1335239,
             CommandType::CmdOpen => 0x1335239,
-            CommandType::WtLoginSt => 0xA,
-            CommandType::WtLoginSig => 0xA,
+            CommandType::ExchangeSt => 0xA,
+            CommandType::ExchangeSig => 0xB,
             CommandType::Register => 0xA,
             CommandType::Service => 0xB,
-            CommandType::Heartbeat => 0xB
+            CommandType::Heartbeat => 0xB,
+            CommandType::Login => 0xA
         }
     }
 

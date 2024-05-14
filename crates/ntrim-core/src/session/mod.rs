@@ -7,7 +7,7 @@ use chrono::Utc;
 use log::{debug, info, warn};
 use crate::client::codec::encoder::DEFAULT_TEA_KEY;
 use crate::client::packet::packet::CommandType;
-use crate::client::packet::packet::CommandType::WtLoginSt;
+use crate::client::packet::packet::CommandType::{ExchangeSig, ExchangeSt};
 use crate::session::device::Device;
 use crate::session::protocol::Protocol;
 
@@ -33,8 +33,21 @@ pub struct SsoSession {
     /// random from 10000 ~ 80000
     pub sso_seq: Arc<AtomicU32>,
 
+    pub encrypt_a1: Vec<u8>,
+    pub no_pic_sig: Vec<u8>,
+    pub tgtgt_key: Vec<u8>,
+
+    /// refresh sig
+    pub wt_session_ticket: Vec<u8>,
+    pub wt_session_key: Vec<u8>,
+    pub wt_session_create_time: u64,
+
     pub last_grp_msg_time: u64,
     pub last_c2c_msg_time: u64,
+
+    /// Web Tickets
+    pub skey: String,
+    pub pskey: String
 }
 
 impl SsoSession {
@@ -58,6 +71,14 @@ impl SsoSession {
             )),
             last_c2c_msg_time: 0,
             last_grp_msg_time: 0,
+            encrypt_a1: Vec::new(),
+            no_pic_sig: Vec::new(),
+            tgtgt_key: Vec::new(),
+            wt_session_ticket: Vec::new(),
+            wt_session_key: Vec::new(),
+            wt_session_create_time: 0,
+            skey: String::new(),
+            pskey: String::new()
         }
     }
 
@@ -70,7 +91,7 @@ impl SsoSession {
     }
 
     pub fn get_session_key(&self, command_type: CommandType) -> &[u8] {
-        if command_type == WtLoginSt {
+        if command_type == ExchangeSig {
             return &*DEFAULT_TEA_KEY;
         }
         if let Some(d2) = self.ticket(SigType::D2) {
@@ -106,6 +127,10 @@ impl TicketManager for SsoSession {
 
     fn ticket(&self, id: SigType) -> Option<&Ticket> {
         self.tickets.get(&id)
+    }
+
+    fn ticket_mut(&mut self, id: SigType) -> Option<&mut Ticket> {
+        self.tickets.get_mut(&id)
     }
 
     fn remove(&mut self, id: SigType) -> Option<Ticket> {

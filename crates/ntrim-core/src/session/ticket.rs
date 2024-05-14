@@ -83,6 +83,8 @@ pub trait TicketManager {
 
     fn ticket(&self, id: SigType) -> Option<&Ticket>;
 
+    fn ticket_mut(&mut self, id: SigType) -> Option<&mut Ticket>;
+
     fn remove(&mut self, id: SigType) -> Option<Ticket>;
 
     fn contain(&self, id: SigType) -> bool;

@@ -37,9 +37,9 @@ pub fn parse_local_config(path: PathBuf) -> Option<Config> {
     None
 }
 
-pub fn save_config_file(path: PathBuf, config: Config) {
+/*pub fn save_config_file(path: PathBuf, config: Config) {
     let toml = toml::to_string(&config).unwrap();
     if let Err(e) = write(path, toml) {
         error!("Failed to write config file: {}", e);
     }
-}
+}*/

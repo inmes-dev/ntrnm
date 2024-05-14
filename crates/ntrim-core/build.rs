@@ -16,7 +16,7 @@ fn main() {
     let mut config = Config::new();
     config
         .out_dir("src/pb")
-        .include_file("session");
+        .include_file("mod.rs");
 
     let mut protos = Vec::new();
     for entry in walkdir::WalkDir::new("protos") {

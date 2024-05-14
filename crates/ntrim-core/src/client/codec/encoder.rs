@@ -149,7 +149,7 @@ fn generate_qqsecurity_head(
     }
     qq_sec.flag = 1;
     qq_sec.locale_id = 2052;
-    qq_sec.qimei = "0902564ff81969dfb3596f2010001f91760e".to_string(); //0902564ff81969dfb3596f2010001f91760e
+    qq_sec.qimei = qimei.to_string(); //0902564ff81969dfb3596f2010001f91760e
     qq_sec.newconn_flag = 0;
     qq_sec.trace_parent = "00-00000000000000000000000000000000-0000000000000000-00".to_string();
     qq_sec.uid = account.1.to_string();
@@ -221,7 +221,7 @@ fn generate_0a_packet_head(
     qq_sec: &Vec<u8>
 ) -> Vec<u8> {
     let protocol = &session.protocol;
-    let app_id = protocol.app_id;
+    let app_id = protocol.sub_app_id;
     let mut buf = BytesMut::new();
 
     buf.put_u32(seq);

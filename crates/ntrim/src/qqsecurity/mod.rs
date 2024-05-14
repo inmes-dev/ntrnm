@@ -64,20 +64,44 @@ impl QSecurity for QSecurityViaHTTP {
         }))
     }
 
-    fn energy<'a>(&'a self, data: String, salt: Box<[u8]>) -> Pin<Box<dyn Future<Output=Vec<u8>> + Send + 'a>> {
-        todo!()
+    fn energy<'a>(&'a self, data: String, salt: Vec<u8>) -> Pin<Box<dyn Future<Output=Vec<u8>> + Send + 'a>> {
+        Pin::from(Box::new(async move {
+            let start = std::time::Instant::now();
+            let salt = hex::encode(salt.as_slice());
+            let params = [("data", data), ("salt", salt)];
+            let response = self.client
+                .post(self.sign_server.clone() + "custom_energy")
+                .form(&params)
+                .send()
+                .await
+                .unwrap();
+            let response = response.text().await.unwrap();
+            let response: serde_json::Value = serde_json::from_str(&response).unwrap();
+            let ret = response["retcode"].as_u64().unwrap_or(1);
+            if ret != 0 {
+                let msg = response["message"].as_str().unwrap_or_else(|| "Unknown error");
+                log::error!("Failed to get custom_energy response ret: {}, msg: {}", ret, msg);
+                return vec![];
+            }
+            let cost_time = start.elapsed().as_millis();
+            info!("Energy request cost: {}ms", cost_time);
+            let data = response["data"].as_object().unwrap();
+            let data = data["data"].as_str().unwrap();
+            return hex::decode(data).unwrap();
+        }))
     }
 
     fn sign<'a>(&'a self, uin: String, cmd: String, buffer: Arc<Vec<u8>>, seq: u32) -> Pin<Box<dyn Future<Output=QSecurityResult> + Send + 'a>> {
         Pin::from(Box::new(async move {
             let start = std::time::Instant::now();
             let buffer = hex::encode(buffer.as_slice());
-            let urlencoded = reqwest::multipart::Form::new()
-                .text("uin", uin)
-                .text("cmd", cmd)
-                .text("seq", seq.to_string())
-                .text("buffer", buffer);
-            let response = self.client.post(self.sign_server.clone() + "sign").multipart(urlencoded).send().await.map_err(|e| {
+            let params = [
+                ("uin", uin),
+                ("cmd", cmd),
+                ("seq", seq.to_string()),
+                ("buffer", buffer)
+            ];
+            let response = self.client.post(self.sign_server.clone() + "sign").form(&params).send().await.map_err(|e| {
                 error!("Failed to send sign request: {}", e);
                 return QSecurityResult::new_empty();
             }).unwrap();

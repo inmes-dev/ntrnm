@@ -2,7 +2,6 @@ use std::fmt::Write;
 use std::sync::Arc;
 use bytes::{BufMut, BytesMut};
 use log::{debug, error, info, warn};
-use rc_box::ArcBox;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{oneshot, RwLock};
 use crate::client::codec::decoder::TrpcDecoder;
@@ -10,20 +9,20 @@ use crate::client::codec::encoder::TrpcEncoder;
 use crate::client::dispatcher::TrpcDispatcher;
 use crate::client::packet::from_service_msg::FromServiceMsg;
 use crate::client::packet::packet::CommandType::{*};
-pub use crate::client::tcp::ClientError;
 use crate::client::tcp::{TcpStatus, TcpClient};
 use crate::client::packet::packet::UniPacket;
 use crate::client::packet::to_service_msg::ToServiceMsg;
 use crate::client::qsecurity::QSecurity;
 use crate::session::SsoSession;
 use crate::session::ticket::{SigType, TicketManager};
+pub use crate::client::tcp::ClientError;
 
 pub struct TrpcClient {
-    pub(crate) client: TcpClient,
-    pub(crate) session: Arc<RwLock<SsoSession>>,
-    pub(crate) qsec: Arc<dyn QSecurity>,
-    pub(crate) sender: Arc<Sender<ToServiceMsg>>,
-    pub(crate) dispatcher: Arc<TrpcDispatcher>
+    pub client: TcpClient,
+    pub session: Arc<RwLock<SsoSession>>,
+    pub qsec: Arc<dyn QSecurity>,
+    pub sender: Arc<Sender<ToServiceMsg>>,
+    pub dispatcher: Arc<TrpcDispatcher>
 }
 
 impl TrpcClient {
@@ -97,12 +96,22 @@ impl TrpcClient {
     }
 
     pub async fn send_uni_packet(self: &Arc<TrpcClient>, uni_packet: UniPacket) -> Option<oneshot::Receiver<FromServiceMsg>> {
+        let session = self.session.clone();
+        let session = session.read().await;
+        let seq = session.next_seq();
+        return self.send_uni_packet_with_seq(uni_packet, seq).await;
+    }
+
+    pub async fn send_uni_packet_with_seq(self: &Arc<TrpcClient>, uni_packet: UniPacket, seq: u32) -> Option<oneshot::Receiver<FromServiceMsg>> {
+        if !self.client.is_connected() {
+            return None;
+        }
+
         let (tx, rx) = oneshot::channel();
         let session = self.session.clone();
         let session = session.read().await;
         debug!("Fetch session rwlock: {:?}", session);
 
-        let seq = session.next_seq();
         let cmd = uni_packet.command.clone();
 
         let sec_info = if self.qsec.is_whitelist_command(cmd.as_str()).await {
@@ -140,7 +149,10 @@ impl TrpcClient {
             Service => {
                 // nothing
             }
-            WtLoginSt => {
+            ExchangeSt => {
+                // nothing
+            }
+            ExchangeSig => {
                 // nothing
             }
             _ => {

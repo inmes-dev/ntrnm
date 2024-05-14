@@ -8,14 +8,16 @@ extern crate pretty_env_logger;
 #[macro_use] extern crate log;
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use bytes::{BufMut, BytesMut};
 use clap::Parser;
-use ntrim_core::bot::{ArcBox, Bot};
+use ntrim_core::bot::{Bot};
 use ntrim_core::client::qsecurity::QSecurity;
 use ntrim_core::session::protocol::QQ_9_0_20;
 use ntrim_core::session::SsoSession;
+use ntrim_tools::sigint;
 use crate::args::{Args, LoginMode};
-use crate::login::session::login_by_session;
+use crate::login::session::token_login;
 use crate::qqsecurity::QSecurityViaHTTP;
 
 const WELCOME: &str = r#"
@@ -33,6 +35,7 @@ async fn main() {
         std::env::set_var("RUST_LOG", args.log_level);
     }
     pretty_env_logger::init();
+    sigint::init_sigint();
     info!("{}", WELCOME);
 
     let config = if let Some(path) = args.config_path {
@@ -50,7 +53,7 @@ async fn main() {
             panic!("Password login is not supported yet")
         }
         LoginMode::Session { session_path } => {
-            login_by_session(session_path, &config).await;
+            token_login(session_path, &config).await;
         }
     }
 
@@ -63,6 +66,7 @@ async fn main() {
     } else {
         error!("No backend selected, please enable one of the backend features")
     }
+
     loop {
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
