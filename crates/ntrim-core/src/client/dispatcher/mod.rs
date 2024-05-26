@@ -17,6 +17,10 @@ impl TrpcDispatcher {
             oneshot: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+    pub async fn clear_oneshot(&self) {
+        let mut oneshot = self.oneshot.lock().await;
+        oneshot.clear();
+    }
 
     pub async fn clear(&self) {
         let mut persistent = self.persistent.lock().await;
@@ -45,6 +49,11 @@ impl TrpcDispatcher {
         oneshot.insert(seq, sender);
     }
 
+    pub async fn unregister_oneshot(&self, seq: u32) {
+        let mut oneshot = self.oneshot.lock().await;
+        oneshot.remove(&seq);
+    }
+
     pub(crate) async fn dispatch(self: Arc<Self>, msg: FromServiceMsg) {
         let cmd = msg.command.clone();
         let seq = msg.seq;
@@ -68,7 +77,6 @@ impl TrpcDispatcher {
                 }
                 return;
             }
-
             error!("Failed to dispatch packet, seq: {}, cmd: {}", seq, cmd);
         }
     }

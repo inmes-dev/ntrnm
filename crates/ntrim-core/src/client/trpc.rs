@@ -1,9 +1,13 @@
 use std::fmt::Write;
-use std::sync::Arc;
+use std::future::Future;
+use std::sync::{Arc, Mutex};
+use anyhow::Error;
 use bytes::{BufMut, BytesMut};
 use log::{debug, error, info, warn};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{oneshot, RwLock};
+use tokio::time::Duration;
+use ntrim_tools::tokiort;
 use crate::client::codec::decoder::TrpcDecoder;
 use crate::client::codec::encoder::TrpcEncoder;
 use crate::client::dispatcher::TrpcDispatcher;
@@ -18,7 +22,7 @@ use crate::session::ticket::{SigType, TicketManager};
 pub use crate::client::tcp::ClientError;
 
 pub struct TrpcClient {
-    pub client: TcpClient,
+    pub(crate) client: Arc<RwLock<TcpClient>>,
     pub session: Arc<RwLock<SsoSession>>,
     pub qsec: Arc<dyn QSecurity>,
     pub sender: Arc<Sender<ToServiceMsg>>,
@@ -34,48 +38,53 @@ impl TrpcClient {
             None => false,
             Some(value) => value == "1",
         };
-        let mut client = if !is_ipv6 {
-            TcpClient::new_ipv4_client()
-        } else {
-            TcpClient::new_ipv6_client()
-        };
-        match client.connect().await {
-            Ok(_) => {
-                info!("Connected to server for ({}, {})", session.uin, session.uid)
-            }
-            Err(e) => {
-                info!("Failed to connect to server for ({}, {}): {}", session.uin, session.uid, e);
-                return Err(e);
-            }
-        }
-        {
-            let mut buf = BytesMut::new();
-            buf.put_u32(21);
-            buf.put_u32(0x01335239);
-            buf.put_u32(0x00000000);
-            buf.put_u8(0x4);
-            buf.write_str("MSF").unwrap();
-            buf.put_u8(0x5);
-            buf.put_u32(0x00000000);
-            client.write_data(buf).await.unwrap();
-        }
-
         let (tx, rx) = tokio::sync::mpsc::channel(match option_env!("NT_SEND_QUEUE_SIZE") {
             None => 32,
             Some(value) => value.parse::<usize>().unwrap_or(32),
         });
         let trpc = Arc::new(Self {
-            client,
+            client: Arc::new(RwLock::new(if !is_ipv6 {
+                TcpClient::new_ipv4_client()
+            } else {
+                TcpClient::new_ipv6_client()
+            })),
             qsec: qsec_mod,
             session: Arc::new(RwLock::new(session)),
             sender: Arc::new(tx),
             dispatcher: Arc::new(TrpcDispatcher::new()),
         });
-        TrpcEncoder::init(&trpc, rx);
-        TrpcDecoder::init(&trpc);
         trpc.repeat_ping_sign_server();
-
+        trpc.try_connect().await?;
+        TrpcEncoder::init(&trpc, rx);
+        TrpcDecoder::init(&trpc).await;
         Ok(trpc)
+    }
+
+    pub async fn is_connected(self: &Arc<Self>) -> bool {
+        let client = self.client.read().await;
+        return client.is_connected();
+    }
+
+    pub async fn is_lost(self: &Arc<Self>) -> bool {
+        let client = self.client.read().await;
+        return client.is_lost();
+    }
+
+    pub async fn try_connect(self: &Arc<Self>) -> Result<(), ClientError> {
+        let mut client = self.client.write().await;
+        client.connect().await?;
+
+        let mut buf = BytesMut::new();
+        buf.put_u32(21);
+        buf.put_u32(0x01335239);
+        buf.put_u32(0x00000000);
+        buf.put_u8(0x4);
+        buf.write_str("MSF").unwrap();
+        buf.put_u8(0x5);
+        buf.put_u32(0x00000000);
+        client.write_data(buf).await.unwrap();
+
+        Ok(())
     }
 
     pub fn repeat_ping_sign_server(self: &Arc<Self>) {
@@ -83,27 +92,27 @@ impl TrpcClient {
         tokio::spawn(async move {
             let qsec = Arc::clone(&trpc.qsec);
             let mut count = 0;
-            while trpc.client.is_connected() {
+            while trpc.is_connected().await {
                 let status = qsec.ping().await;
                 count += 1;
                 if count == 50 {
                     info!("Pinging sign server, status: {}", status);
                     count = 0;
                 }
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                tokio::time::sleep(Duration::from_secs(15)).await;
             }
         });
     }
 
-    pub async fn send_uni_packet(self: &Arc<TrpcClient>, uni_packet: UniPacket) -> Option<oneshot::Receiver<FromServiceMsg>> {
+    pub async fn send_uni_packet(self: &Arc<TrpcClient>, uni_packet: UniPacket) -> (u32, Option<oneshot::Receiver<FromServiceMsg>>) {
         let session = self.session.clone();
         let session = session.read().await;
         let seq = session.next_seq();
-        return self.send_uni_packet_with_seq(uni_packet, seq).await;
+        return (seq, self.send_uni_packet_with_seq(uni_packet, seq).await);
     }
 
     pub async fn send_uni_packet_with_seq(self: &Arc<TrpcClient>, uni_packet: UniPacket, seq: u32) -> Option<oneshot::Receiver<FromServiceMsg>> {
-        if !self.client.is_connected() {
+        if !self.is_connected().await || self.is_lost().await {
             return None;
         }
 
@@ -167,6 +176,10 @@ impl TrpcClient {
         return Some(rx);
     }
 
+    pub async fn unregister_oneshot(self: &Arc<TrpcClient>, seq: u32) {
+        self.dispatcher.unregister_oneshot(seq).await;
+    }
+
     pub async fn register_persistent(self: &Arc<TrpcClient>, cmd: String, sender: Sender<FromServiceMsg>) {
         self.dispatcher.register_persistent(cmd, sender).await;
     }
@@ -175,8 +188,16 @@ impl TrpcClient {
         self.dispatcher.register_multiple_persistent(cmd, sender).await;
     }
 
-    pub async fn disconnect(&mut self) {
-        self.client.disconnect().await;
+    pub async fn set_lost(self: &Arc<Self>) {
+        let mut client = self.client.write().await;
+        client.set_lost().await;
+        warn!("Trpc connection lost");
+        self.dispatcher.clear_oneshot().await;
+    }
+
+    pub async fn disconnect(self: &Arc<Self>) {
+        let mut client = self.client.write().await;
+        client.disconnect().await;
         self.dispatcher.clear().await;
         self.sender.closed().await;
     }

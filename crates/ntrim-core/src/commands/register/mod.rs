@@ -1,10 +1,12 @@
 use std::sync::atomic::Ordering::SeqCst;
+use anyhow::Error;
 use log::info;
 use prost::Message;
+use tokio::{self, runtime::Runtime, time::{self, Duration, Instant}};
 use ntrim_macros::command;
 use pb::trpc::register::{ * };
 use crate::bot::BotStatus;
-use crate::pb;
+use crate::{await_response, pb};
 
 struct RegisterBuilder;
 
@@ -92,10 +94,59 @@ impl RegisterBuilder {
     }
 
     async fn parse(bot: &Arc<Bot>, data: Vec<u8>) -> Option<RegisterResponse> {
+        //info!("Received register response: {:?}", hex::encode(data.as_slice()));
         let resp = SsoSyncInfoResponse::decode(&data[..]).unwrap();
         if let Some(response) = resp.register_response {
+            if let Some(msg) = &response.msg {
+                if msg == "register success" {
+                    Self::on_success(bot.clone());
+                }
+            }
             return Some(response)
         }
         None
     }
+
+    fn on_success(bot: Arc<Bot>) {
+        // update bot status
+        bot.set_online();
+        Self::do_heartbeat(bot.clone());
+    }
+
+    fn do_heartbeat(bot: Arc<Bot>) {
+        let heartbeat_interval = option_env!("HEARTBEAT_INTERVAL")
+            .unwrap_or("270").parse::<u64>().unwrap();
+        tokio::spawn(async move {
+            let start = Instant::now() + Duration::from_secs(heartbeat_interval);
+            let interval = Duration::from_secs(heartbeat_interval);
+            let mut intv = time::interval_at(start, interval);
+            loop {
+                intv.tick().await;
+                if !bot.is_online().await { break; }
+
+                let is_success = await_response!(Duration::from_secs(5),
+                    async {
+                        let rx = Bot::send_nt_heartbeat(&bot).await;
+                        if let Some(rx) = rx {
+                            rx.await.map_err(|e| Error::new(e))
+                        } else {
+                            Err(Error::msg("Tcp connection exception"))
+                        }
+                    }, |value| {
+                        info!("Bot heartbeat sent successfully! Next internal: {:?}", value);
+                        true
+                    }, |err| {
+                        error!("Bot heartbeat sent failed! Error: {:?}", err);
+                        false
+                    }
+                );
+                if is_success {
+                    Bot::send_heartbeat(&bot).await;
+                } else {
+                    bot.set_offline().await;
+                }
+            }
+        });
+    }
 }
+

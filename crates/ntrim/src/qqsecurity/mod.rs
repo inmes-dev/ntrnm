@@ -48,7 +48,7 @@ impl QSecurity for QSecurityViaHTTP {
                 return false;
             }).unwrap();
             let response: serde_json::Value = serde_json::from_str(&response).map_err(|e| {
-                error!("Failed to ping sign server (0x2): {}", e);
+                error!("Failed to ping sign server (0x2): {}, json: {}", e, response);
                 return false;
             }).unwrap();
             let ret = response["retcode"].as_u64().unwrap();

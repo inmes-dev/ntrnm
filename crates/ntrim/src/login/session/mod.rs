@@ -8,7 +8,7 @@ use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::oneshot::error::RecvError;
 use ntrim_core::bot::{Bot, BotStatus};
-use ntrim_core::commands;
+use ntrim_core::{await_response, commands};
 use ntrim_core::commands::wtlogin::refresh_sig::RefreshSig;
 use ntrim_core::commands::wtlogin::wtlogin_request::{WtloginFactory, WtloginBuilder};
 use ntrim_core::events::wtlogin_event::WtloginResponse;
@@ -30,19 +30,27 @@ pub async fn token_login(session_path: String, config: &Config) -> (Arc<Bot>, Re
     let (mut tx, rx) = mpsc::channel(1);
     tokio::spawn(async move {
         //let resp_recv = Bot::registerNt(&bot).await.unwrap();
-        let resp_recv = Bot::register(&bot).await.unwrap();
-        match resp_recv.await {
+
+       let value =  await_response!(tokio::time::Duration::from_secs(15), async {
+            let rx = Bot::register(&bot).await;
+            if let Some(rx) = rx {
+                rx.await.map_err(|e| Error::new(e))
+            } else {
+                Err(Error::msg("Tcp connection exception"))
+            }
+        }, |value| {
+            Ok(value)
+        }, |e| {
+            Err(e)
+        });
+        match value {
             Ok(resp) => {
                 if let Some(resp) = resp {
-                    if resp.msg == "register success" {
-                        let mut status = BotStatus::from_bits(bot.status.load(SeqCst)).unwrap();
-                        status.set(BotStatus::Online, true);
-                        status.set(BotStatus::Offline, false);
-                        bot.status.store(status.bits(), SeqCst);
-
+                    let msg = resp.msg.unwrap_or("protobuf parser error".to_string());
+                    if msg == "register success" {
                         info!("Bot register req to online success, Welcome!");
                         // 注册退出信号监听器 自动保存会话上下文
-                        ntrim_tools::sigint::SIGINT_HANDLER.add_listener(Pin::from(Box::new(async move {
+                        ntrim_tools::sigint::global_sigint_handler().add_listener(Pin::from(Box::new(async move {
                             info!("Received SIGINT, saving session and exiting");
                             let session = bot.client.session.read().await;
                             save_session(&session_path, session.deref());
@@ -53,6 +61,8 @@ pub async fn token_login(session_path: String, config: &Config) -> (Arc<Bot>, Re
                                 error!("Failed to send login response: {:?}", e)
                             }).unwrap();
                         }
+                    } else {
+                        warn!("Bot register req to online failed: {:?}", msg);
                     }
                 } else {
                     error!("Bot register req to online failed, Please check your network connection.");
@@ -63,7 +73,7 @@ pub async fn token_login(session_path: String, config: &Config) -> (Arc<Bot>, Re
             Err(e) => {
                 error!("Failed to receive response for register: {:?}", e);
                 if tx.is_closed() { return }
-                tx.send(WtloginResponse::Fail(Error::new(e))).await.unwrap();
+                tx.send(WtloginResponse::Fail(e)).await.unwrap();
             }
         }
     });

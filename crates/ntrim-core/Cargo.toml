@@ -48,7 +48,6 @@ uuid = { version = "1.8.0", features = ["v4"] }        # for attaching input fil
 derive_more = "0.99.17"
 mime = "0.3.17"
 thiserror = "1.0.58"
-once_cell = "1.19.0"
 chrono = { version = "0.4.37", features = ["now"] }
 bitflags = { version = "2.5.0" }
 hex = "0.4.3"
@@ -58,6 +57,7 @@ prost-build = "0.12.3"
 env_logger = "0.11.3"
 anyhow = "1.0.81"
 md5 = "0.7.0"
+time = "0.3.36"
 
 [build-dependencies]
 prost-build = "0.12.3"

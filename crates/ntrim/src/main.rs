@@ -13,7 +13,7 @@ use bytes::{BufMut, BytesMut};
 use clap::Parser;
 use ntrim_core::bot::{Bot};
 use ntrim_core::client::qsecurity::QSecurity;
-use ntrim_core::session::protocol::QQ_9_0_20;
+use ntrim_core::events::wtlogin_event::WtloginResponse;
 use ntrim_core::session::SsoSession;
 use ntrim_tools::sigint;
 use crate::args::{Args, LoginMode};
@@ -48,13 +48,27 @@ async fn main() {
             .expect("Configuration file parsing failure")
     };
 
-    match args.login_mode {
+    let (bot, mut result) = match args.login_mode {
         LoginMode::Password { qq, password } => {
             panic!("Password login is not supported yet")
         }
         LoginMode::Session { session_path } => {
-            token_login(session_path, &config).await;
+            token_login(session_path, &config).await
         }
+    };
+
+    loop {
+        if result.is_closed() { return; }
+        match result.recv().await.unwrap() {
+            WtloginResponse::Success() => {
+                break;
+            }
+            WtloginResponse::Fail(e) => {
+                error!("Login failed: {}", e);
+                return;
+            }
+            WtloginResponse::RefreshSigSuccess => panic!("RefreshSigSuccess is not supported yet") // 首次进入程序不该有这个分支
+        };
     }
 
     if cfg!(feature = "onebot") {
@@ -66,7 +80,6 @@ async fn main() {
     } else {
         error!("No backend selected, please enable one of the backend features")
     }
-
     loop {
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }

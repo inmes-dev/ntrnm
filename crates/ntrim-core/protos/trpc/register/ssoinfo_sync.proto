@@ -77,7 +77,7 @@ message SsoSyncInfoRequest {
 }
 
 message RegisterResponse {
-  required string msg = 2;
+  optional string msg = 2;
 }
 
 message SsoSyncInfoResponse {

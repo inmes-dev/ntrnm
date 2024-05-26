@@ -3,7 +3,7 @@ use std::process::exit;
 use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
 use ntrim_core::session::device::Device;
-use ntrim_core::session::protocol::QQ_9_0_20;
+use ntrim_core::session::protocol::protocol;
 use ntrim_core::session::SsoSession;
 use ntrim_core::session::ticket::{SigType, Ticket, TicketManager};
 use ntrim_tools::crypto::qqtea::qqtea_decrypt;
@@ -121,7 +121,7 @@ pub fn load_session(path: &str) -> SsoSession {
     );
 
     /// 遗传信息
-    let protocol = QQ_9_0_20.deref();
+    let protocol = protocol::qq_9_0_20();
     let mut sso_session = SsoSession::new(
         (uin.parse().unwrap(), uid.to_string()),
         protocol.clone(),
@@ -133,10 +133,10 @@ pub fn load_session(path: &str) -> SsoSession {
     /// DNA的复制
     let sigs = session_data["sigs"].as_object().unwrap();
     let mut a1_with_tgtgt_key = hex::decode(sigs["en_a1"].as_str().unwrap()).unwrap(); /// 解码管家基因
-    if a1_with_tgtgt_key.len() == 160 + 16 {
+    if a1_with_tgtgt_key.len() == 160 + 16 || a1_with_tgtgt_key.len() == 152 + 16 {
         // 160 bytes for A1, 16 bytes for tgtgt_key
-        sso_session.encrypt_a1 = a1_with_tgtgt_key[..160].to_vec();
-        sso_session.tgtgt_key = a1_with_tgtgt_key[160..].to_vec();
+        sso_session.encrypt_a1 = a1_with_tgtgt_key[..a1_with_tgtgt_key.len() - 16].to_vec();
+        sso_session.tgtgt_key = a1_with_tgtgt_key[a1_with_tgtgt_key.len() - 16..].to_vec();
     } else {
         a1_with_tgtgt_key = qqtea_decrypt(a1_with_tgtgt_key.as_slice(), guid.as_slice());
         sso_session.encrypt_a1 = a1_with_tgtgt_key[..160].to_vec();
@@ -176,7 +176,5 @@ pub fn load_session(path: &str) -> SsoSession {
             expire_time,
         });
     }
-
-
     return sso_session;
 }

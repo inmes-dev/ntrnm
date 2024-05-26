@@ -12,7 +12,7 @@ pub mod wtlogin_request {
     use log::{info, warn};
     use tokio::sync::oneshot::{Receiver, Sender};
     use ntrim_tools::bytes::{BytePacketBuilder, BytePacketReader, PacketFlag};
-    use ntrim_tools::crypto::ecdh::ECDH_SHARE_KEY;
+    use ntrim_tools::crypto::ecdh::ecdh_share_key;
     use ntrim_tools::crypto::qqtea::{qqtea_decrypt, qqtea_encrypt};
     use crate::client::packet::FromServiceMsg;
     use crate::client::packet::packet::{CommandType, UniPacket};
@@ -129,7 +129,7 @@ pub mod wtlogin_request {
             }
 
             let key = match self.command_type {
-                CommandType::ExchangeSt => ECDH_SHARE_KEY.as_slice(),
+                CommandType::ExchangeSt => ecdh_share_key().await.as_slice(),
                 CommandType::ExchangeSig => session.wt_session_key.as_slice(),
                 _ => panic!("Not supported wtlogin command: {:?}", self.command_type),
             };
@@ -269,14 +269,13 @@ pub mod wtlogin_request {
                         }
                         0x512 => {
                             // web key
-                            let mut buf = v.clone().as_mut();
-                            let size = buf.get_u16();
-                            for _ in 0..size {
-                                let domain = buf.get_str_with_flags(PacketFlag::I16Len).unwrap();
-                                let pskey = buf.get_str_with_flags(PacketFlag::I16Len).unwrap();
-                                let p4token = buf.get_str_with_flags(PacketFlag::I16Len).unwrap();
-
-                            }
+                            //let mut buf = v.clone().as_mut();
+                            //let size = buf.get_u16();
+                            //for _ in 0..size {
+                            //    let domain = buf.get_str_with_flags(PacketFlag::I16Len).unwrap();
+                            //    let pskey = buf.get_str_with_flags(PacketFlag::I16Len).unwrap();
+                            //    let p4token = buf.get_str_with_flags(PacketFlag::I16Len).unwrap();
+                            //}
                         }
                         0x522 => {}
                         0x528 => {}

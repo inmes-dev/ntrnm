@@ -5,7 +5,7 @@ use std::sync::atomic::AtomicU32;
 use crate::session::ticket::{SigType, Ticket, TicketManager};
 use chrono::Utc;
 use log::{debug, info, warn};
-use crate::client::codec::encoder::DEFAULT_TEA_KEY;
+use crate::client::codec::encoder::default_tea_key;
 use crate::client::packet::packet::CommandType;
 use crate::client::packet::packet::CommandType::{ExchangeSig, ExchangeSt};
 use crate::session::device::Device;
@@ -92,12 +92,12 @@ impl SsoSession {
 
     pub fn get_session_key(&self, command_type: CommandType) -> &[u8] {
         if command_type == ExchangeSig {
-            return &*DEFAULT_TEA_KEY;
+            return default_tea_key();
         }
         if let Some(d2) = self.ticket(SigType::D2) {
             d2.sig_key.as_slice()
         } else {
-            &*DEFAULT_TEA_KEY
+            default_tea_key()
         }
     }
 

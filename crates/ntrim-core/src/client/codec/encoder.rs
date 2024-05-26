@@ -1,8 +1,8 @@
+use std::cell::OnceCell;
 use std::ops::Deref;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use bytes::{BufMut, BytesMut};
 use log::{debug, error, info, warn};
-use once_cell::sync::Lazy;
 use prost::Message;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::RwLockReadGuard;
@@ -10,6 +10,7 @@ use ntrim_tools::bytes::{BytePacketBuilder, PacketFlag};
 use ntrim_tools::crypto::qqtea::qqtea_encrypt;
 
 use crate::client::codec::CodecError;
+use crate::client::packet::packet::CommandType::Heartbeat;
 use crate::client::packet::packet::UniPacket;
 use crate::client::packet::to_service_msg::ToServiceMsg;
 use crate::client::qsecurity::QSecurityResult;
@@ -17,9 +18,10 @@ use crate::client::trpc::{ClientError, TrpcClient};
 use crate::pb::qqsecurity::{QqSecurity, SsoMapEntry, SsoSecureInfo};
 use crate::session::SsoSession;
 
-pub(crate) static DEFAULT_TEA_KEY: Lazy<[u8; 16]> = Lazy::new(|| {
-    [0u8; 16]
-});
+pub(crate) fn default_tea_key() -> &'static [u8; 16] {
+    static DEFAULT_TEA_KEY: OnceLock<[u8; 16]> = OnceLock::new();
+    DEFAULT_TEA_KEY.get_or_init(|| [0u8; 16])
+}
 
 pub(crate) trait TrpcEncoder {
     fn init(self: &Arc<Self>, rx: Receiver<ToServiceMsg>);
@@ -31,6 +33,12 @@ impl TrpcEncoder for TrpcClient {
         tokio::spawn(async move {
             let session = trpc.session.clone();
             loop {
+                if trpc.is_lost().await {
+                    continue;
+                } else if !trpc.is_connected().await || rx.is_closed() {
+                    // 主动断连或者trpc实例错误消亡，结束encoder
+                    break;
+                }
                 let packet = match rx.recv().await {
                     Some(packet) => packet,
                     None => {
@@ -47,7 +55,8 @@ impl TrpcEncoder for TrpcClient {
                 }
                 debug!("Sending packet to server, size: {}", buf.len());
                 //info!("Packet: {:?}", hex::encode(buf));
-                trpc.client.write_data(buf).await.unwrap_or_else(|e| {
+                let client = trpc.client.read().await;
+                client.write_data(buf).await.unwrap_or_else(|e| {
                     error!("Failed to write data to server: {:?}", e);
                 });
             }
@@ -84,19 +93,24 @@ fn encode(session: &RwLockReadGuard<SsoSession>, msg: ToServiceMsg, dst: &mut By
             session.uin.to_string().as_bytes()
         );
 
-        let mut data = BytesMut::new();
         let head_body = if head_flag == 0xA {
             generate_0a_packet_head(uni_packet.command.as_str(), sso_seq, &msg.second_token, session, &qq_sec)
         } else {
             generate_0b_packet_head(uni_packet.command.as_str(), session, &qq_sec)
         };
-        data.put_bytes_with_flags(head_body.as_slice(), PacketFlag::I32Len | PacketFlag::ExtraLen);
-        let wup_buffer = uni_packet.to_wup_buffer();
-        //info!("Wup buffer: {:?}", hex::encode(wup_buffer.as_slice()));
-        data.put_bytes_with_flags(wup_buffer.as_slice(), PacketFlag::I32Len | PacketFlag::ExtraLen);
+        if encrypted_flag == 0 {
+            buf.put_bytes_with_flags(head_body.as_slice(), PacketFlag::I32Len | PacketFlag::ExtraLen);
+            buf.put_bytes_with_flags(uni_packet.wup_buffer.as_slice(), PacketFlag::I32Len | PacketFlag::ExtraLen);
+        } else {
+            let mut data = BytesMut::new();
+            data.put_bytes_with_flags(head_body.as_slice(), PacketFlag::I32Len | PacketFlag::ExtraLen);
+            let wup_buffer = uni_packet.to_wup_buffer();
+            //info!("Wup buffer: {:?}", hex::encode(wup_buffer.as_slice()));
+            data.put_bytes_with_flags(wup_buffer.as_slice(), PacketFlag::I32Len | PacketFlag::ExtraLen);
 
-        let data = qqtea_encrypt(&data, tea_key);
-        buf.put(data.as_slice());
+            let data = qqtea_encrypt(&data, tea_key);
+            buf.put(data.as_slice());
+        }
     }, PacketFlag::I32Len | PacketFlag::ExtraLen);
 
     //info!("Encoded packet: {:?}", hex::encode(dst));

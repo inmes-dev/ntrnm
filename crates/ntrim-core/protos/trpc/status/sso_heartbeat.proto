@@ -1,0 +1,39 @@
+syntax = "proto2";
+
+package trpc.status;
+
+
+message SilenceState {
+  required uint32 local_silence = 1;
+}
+
+// Heartbeat.Alive
+// trpc.qq_new_tech.status_svc.StatusService.SsoHeartBeat
+message SsoHeartBeatRequest {
+  required uint32 type = 1;
+  required SilenceState local_silence = 2;
+  required uint32 battery_state = 3;
+  required uint64 time = 4;
+}
+
+/*
+struct battery {
+    uint8_t battery_level: 7;
+    uint8_t charging_state: 1;
+    uint32_t reserved: 24;
+};
+
+int main(){
+    battery b{};
+    auto p = (int*)&b;
+    *p = 183;
+    cout << "Battery Level: " << (int) b.battery_level << endl;
+    cout << "Charging: " << (int) b.charging_state << endl;
+    cout << "Value: " << *(p) << endl;
+    return 0;
+}
+ */
+
+message SsoHeartBeatResponse {
+  optional uint64 interval = 3;
+}

@@ -85,18 +85,18 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
                 None => return None,
                 Some(data) => data
             };
-            let futures = bot.client.send_uni_packet(UniPacket::new(
+            let (seq, recv) = bot.client.send_uni_packet(UniPacket::new(
                 #cmd_type,
                 #cmd.to_string(),
                 data
-            ));
-            let recv = match futures.await {
-                Some(recv) => recv,
+            )).await;
+            let recv = match recv {
+                Some(result) => result,
                 None => return None
             };
             let bot = Arc::clone(bot);
             tokio::spawn(async move {
-                let data = match timeout(tokio::time::Duration::from_secs(15), recv).await {
+                let data = match timeout(tokio::time::Duration::from_secs(5), recv).await {
                     Ok(result) => match result {
                         Ok(result) => Some(result),
                         Err(e) => {
@@ -109,6 +109,9 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
                         None
                     }
                 };
+                if data.is_none() {
+                    bot.client.unregister_oneshot(seq).await;
+                }
                 let data = match data {
                     None => None,
                     Some(data) => match #impl_name::parse(&bot, data.wup_buffer.to_vec()).await {
@@ -116,6 +119,7 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
                         Some(data) => Some(data)
                     }
                 };
+                if tx.is_closed() { return }
                 if let Err(e) = tx.send(data) {
                     error!("Failed to push response for Service(#service): {:?}", e);
                 }

@@ -17,3 +17,6 @@ IS_NT_IPV6=1 ./ntrim
 | RUST_LOG           | 日志级别           | info |
 | IS_NT_IPV6         | 是否启用 trpc IPv6 | 0    |
 | NT_SEND_QUEUE_SIZE | trpc协议发包队列大小   | 32   |
+| HEARTBEAT_INTERVAL | 标准心跳间隔时间       | 30   |
+| AUTO_RECONNECT     | trpc自动重连       | 1    |
+| RECONNECT_INTERVAL | trpc自动重连间隔(秒)  | 5    |
