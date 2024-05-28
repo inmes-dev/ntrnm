@@ -77,6 +77,10 @@ pub fn save_session(path: &str, session: &SsoSession) {
     std::fs::write(path, serde_json::to_string_pretty(&data).unwrap()).unwrap();
 }
 
+fn is_valid_en_a1(en_a1: &[u8]) -> bool {
+    en_a1.iter().all(|&x| x >= 33 && x <= 126)
+}
+
 /// 载入克隆体
 pub fn load_session(path: &str) -> SsoSession {
     let current_sec_time = chrono::Utc::now().timestamp();
@@ -132,15 +136,16 @@ pub fn load_session(path: &str) -> SsoSession {
 
     /// DNA的复制
     let sigs = session_data["sigs"].as_object().unwrap();
-    let mut a1_with_tgtgt_key = hex::decode(sigs["en_a1"].as_str().unwrap()).unwrap(); /// 解码管家基因
-    if a1_with_tgtgt_key.len() == 160 + 16 || a1_with_tgtgt_key.len() == 152 + 16 {
-        // 160 bytes for A1, 16 bytes for tgtgt_key
+    let mut a1_with_tgtgt_key = hex::decode(sigs["en_a1"].as_str().unwrap()).unwrap();
+    // 解码管家基因
+    if is_valid_en_a1(&a1_with_tgtgt_key[a1_with_tgtgt_key.len() - 16..]) {
         sso_session.encrypt_a1 = a1_with_tgtgt_key[..a1_with_tgtgt_key.len() - 16].to_vec();
         sso_session.tgtgt_key = a1_with_tgtgt_key[a1_with_tgtgt_key.len() - 16..].to_vec();
     } else {
+        warn!("Your A1 is invalid, try to decrypt with guid");
         a1_with_tgtgt_key = qqtea_decrypt(a1_with_tgtgt_key.as_slice(), guid.as_slice());
-        sso_session.encrypt_a1 = a1_with_tgtgt_key[..160].to_vec();
-        sso_session.tgtgt_key = a1_with_tgtgt_key[160..].to_vec();
+        sso_session.encrypt_a1 = a1_with_tgtgt_key[..a1_with_tgtgt_key.len() - 16].to_vec();
+        sso_session.tgtgt_key = a1_with_tgtgt_key[a1_with_tgtgt_key.len() - 16..].to_vec();
     }
     sso_session.no_pic_sig = hex::decode(sigs["no_pic_sig"].as_str().unwrap()).unwrap();
     sso_session.wt_session_ticket = hex::decode(sigs["wt_session_ticket"].as_str().unwrap()).unwrap();

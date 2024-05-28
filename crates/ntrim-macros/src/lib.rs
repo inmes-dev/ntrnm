@@ -6,6 +6,7 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use std::any::{Any, TypeId};
 use std::ops::Add;
 use std::collections::HashMap;
+use std::thread;
 use quote::{quote, ToTokens};
 use ::syn::{*,
             parse::{Parse, ParseStream, Parser},
@@ -32,7 +33,8 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
             _ => None
         }
     }).collect();
-    let service = Ident::new(args.service.as_str(), Span::call_site());
+    let service_name = args.service.as_str();
+    let service = Ident::new(service_name, Span::call_site());
 
     let output = function_map["parse"].sig.output
         .clone()
@@ -80,6 +82,7 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
 
     let f: TokenStream2 = quote! {
         pub async fn #service(#input) -> Option<Receiver<#output>> {
+            static SERVICE_NAME: &'static str = #service_name;
             let (tx, rx) = tokio::sync::oneshot::channel();
             let data = match #impl_name::generate(#input_args).await {
                 None => return None,
@@ -100,12 +103,12 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
                     Ok(result) => match result {
                         Ok(result) => Some(result),
                         Err(e) => {
-                            error!("Failed to receive response for Service(#service): {:?}", e);
+                            error!("Failed to receive response for Service({}): {:?}", SERVICE_NAME, e);
                             None
                         }
                     },
                     Err(_) => {
-                        warn!("Service(#service) timed out");
+                        warn!("Service({}) timed out", SERVICE_NAME);
                         None
                     }
                 };
@@ -121,7 +124,7 @@ pub fn command(attrs: TokenStream, item: TokenStream) -> TokenStream {
                 };
                 if tx.is_closed() { return }
                 if let Err(e) = tx.send(data) {
-                    error!("Failed to push response for Service(#service): {:?}", e);
+                    error!("Failed to push response for Service({}): {:?}", SERVICE_NAME, e);
                 }
             });
             return Some(rx)

@@ -2,6 +2,7 @@
 # 签名服务器地址
 # 默认的签名地址延迟有点高
 # 如果需求低延迟，请使用香港或其它区域的服务器代理转发即可...
+# 如果出现无法连接请手动配置hosts
 server = "https://kritor.support/android/v9.0.20"
 
 [developer]

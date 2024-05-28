@@ -9,7 +9,7 @@ pub mod wtlogin_request {
     use anyhow::Error;
     use bytes::{Buf, BufMut, Bytes, BytesMut};
     use chrono::DateTime;
-    use log::{info, warn};
+    use log::{error, info, warn};
     use tokio::sync::oneshot::{Receiver, Sender};
     use ntrim_tools::bytes::{BytePacketBuilder, BytePacketReader, PacketFlag};
     use ntrim_tools::crypto::ecdh::ecdh_share_key;
@@ -119,14 +119,6 @@ pub mod wtlogin_request {
             let result = reader.get_u8();
             // 235 协议版本过低
             //let teaKey = if (result == 180) manager.session.randomKey else key
-
-            if result != 0 {
-                if cb.is_closed() { return; }
-                cb.send(
-                    WtloginResponse::Fail(Error::msg(format!("Wtlogin failed, result: {}, user_id: {}", result, uin)))
-                ).unwrap();
-                return;
-            }
 
             let key = match self.command_type {
                 CommandType::ExchangeSt => ecdh_share_key().await.as_slice(),
@@ -298,9 +290,31 @@ pub mod wtlogin_request {
                         _ => warn!("Unknown tlv_t{:x}", k)
                     }
                 });
-            }
-            if !cb.is_closed() {
-                cb.send(WtloginResponse::Success()).expect("Failed to send wtlogin response");
+                if !cb.is_closed() {
+                    cb.send(WtloginResponse::Success()).expect("Failed to send wtlogin response");
+                }
+            } else {
+                let t146 = tlv_map.get(&0x146);
+                let t508 = tlv_map.get(&0x508);
+                //warn!("T146 => {}", hex::encode(t146.map_or_else(|| vec![], |v| v.to_vec())));
+                //warn!("T508 => {}", hex::encode(t508.map_or_else(|| vec![], |v| v.to_vec())));
+                if let Some(t146) = t146 {
+                    let mut t146 = BytesMut::from(t146.to_vec().as_slice());
+                    t146.advance(4);
+                    let msg_len = t146.get_u16() as u32;
+                    let msg = t146.copy_to_bytes(msg_len as usize);
+                    let msg = String::from_utf8(msg.to_vec()).unwrap();
+                    let reason_len = t146.get_u16() as u32;
+                    let reason = t146.copy_to_bytes(reason_len as usize);
+                    let reason = String::from_utf8(reason.to_vec()).unwrap();
+                    error!("Wtlogin failed, result: 0x{:x}, user_id: {}, msg: {}, reason: {}", result, uin, msg, reason);
+                } else {
+                    error!("Wtlogin failed, result: 0x{:x}, user_id: {}, Unknown Error", result, uin);
+                }
+                if cb.is_closed() { return; }
+                cb.send(
+                    WtloginResponse::Fail(Error::msg(format!("Wtlogin failed, result: 0x{:x}, user_id: {}", result, uin)))
+                ).unwrap();
             }
         }
 

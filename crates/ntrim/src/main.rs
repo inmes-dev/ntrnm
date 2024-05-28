@@ -48,12 +48,12 @@ async fn main() {
             .expect("Configuration file parsing failure")
     };
 
-    let (bot, mut result) = match args.login_mode {
+    let ((bot, mut result), immediate_refresh) = match args.login_mode {
         LoginMode::Password { qq, password } => {
             panic!("Password login is not supported yet")
         }
-        LoginMode::Session { session_path } => {
-            token_login(session_path, &config).await
+        LoginMode::Session { session_path, immediate_refresh } => {
+            (token_login(session_path, &config).await, immediate_refresh)
         }
     };
 
@@ -69,6 +69,11 @@ async fn main() {
             }
             WtloginResponse::RefreshSigSuccess => panic!("RefreshSigSuccess is not supported yet") // 首次进入程序不该有这个分支
         };
+    }
+
+    // Here we can start the backend because the bot is online
+    if immediate_refresh.map_or_else(|| false, |v| v) {
+        ntrim_core::refresh_session::refresh_sig(&bot).await;
     }
 
     if cfg!(feature = "onebot") {

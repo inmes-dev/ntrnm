@@ -30,7 +30,6 @@ pub async fn token_login(session_path: String, config: &Config) -> (Arc<Bot>, Re
     let (mut tx, rx) = mpsc::channel(1);
     tokio::spawn(async move {
         //let resp_recv = Bot::registerNt(&bot).await.unwrap();
-
        let value =  await_response!(tokio::time::Duration::from_secs(15), async {
             let rx = Bot::register(&bot).await;
             if let Some(rx) = rx {

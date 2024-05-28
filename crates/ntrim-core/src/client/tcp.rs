@@ -60,6 +60,7 @@ type TrpcReadChannel = Arc<Mutex<OwnedReadHalf>>;
 pub(crate) struct TcpClient {
     status: AtomicU32,
     pub(crate) channel: (Option<TrpcWriteChannel>, Option<TrpcReadChannel>),
+    addr: Option<SocketAddr>
 }
 
 impl TcpClient {
@@ -67,6 +68,7 @@ impl TcpClient {
         Self {
             status: AtomicU32::new((TcpStatus::Ipv6Addr | TcpStatus::Ready).bits()),
             channel: (None, None),
+            addr: None
         }
     }
 
@@ -74,6 +76,7 @@ impl TcpClient {
         Self {
             status: AtomicU32::new((TcpStatus::Ipv4Addr | TcpStatus::Ready).bits()),
             channel: (None, None),
+            addr: None
         }
     }
 
@@ -100,17 +103,20 @@ impl TcpClient {
     }
 
     pub(crate) async fn connect(&mut self) -> Result<(), ClientError> {
-        let addrs = self.query_for_address().await?;
-        let addr = addrs.first().unwrap().clone();
+        if self.addr.is_none() {
+            let addrs = self.query_for_address().await?;
+            self.addr = Some(addrs.first().unwrap().clone());
+        }
+
         let mut status = TcpStatus::from_bits(self.status.load(SeqCst)).unwrap();
 
-        info!("Connecting to server: {}", addr);
+        info!("Connecting to server: {:?}", self.addr);
         let tcp = if status.contains(TcpStatus::Ipv4Addr) {
             TcpSocket::new_v4()
         } else {
             TcpSocket::new_v6()
         }.unwrap();
-        let mut tcp_stream = match tcp.connect(addr).await {
+        let mut tcp_stream = match tcp.connect(self.addr.unwrap()).await {
             Ok(result) => result,
             Err(e) => {
                 error!("Failed to connect server: {}", e);
