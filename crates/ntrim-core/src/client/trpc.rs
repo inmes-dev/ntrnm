@@ -24,7 +24,6 @@ pub use crate::client::tcp::ClientError;
 
 pub struct TrpcClient {
     pub(crate) client: Arc<RwLock<TcpClient>>,
-    pub(crate) trpc_status: Arc<(Mutex<bool>, Condvar)>,
     pub session: Arc<RwLock<SsoSession>>,
     pub qsec: Arc<dyn QSecurity>,
     pub sender: Arc<Sender<ToServiceMsg>>,
@@ -36,21 +35,17 @@ impl TrpcClient {
         session: SsoSession,
         qsec_mod: Arc<dyn QSecurity>
     ) -> Result<Arc<Self>, ClientError> {
-        let is_ipv6 = match option_env!("IS_NT_IPV6") {
-            None => false,
-            Some(value) => value == "1",
-        };
-        let (tx, rx) = tokio::sync::mpsc::channel(match option_env!("NT_SEND_QUEUE_SIZE") {
-            None => 32,
-            Some(value) => value.parse::<usize>().unwrap_or(32),
-        });
+        let is_ipv6 = option_env!("IS_NT_IPV6").map_or(false, |v| v == "1");
+        let (tx, rx) = tokio::sync::mpsc::channel(
+            option_env!("NT_SEND_QUEUE_SIZE")
+                .map_or(32, |value| value.parse::<usize>().unwrap_or(32))
+        );
         let trpc = Arc::new(Self {
             client: Arc::new(RwLock::new(if !is_ipv6 {
                 TcpClient::new_ipv4_client()
             } else {
                 TcpClient::new_ipv6_client()
             })),
-            trpc_status: Arc::new((Mutex::new(true), Condvar::new())),
             qsec: qsec_mod,
             session: Arc::new(RwLock::new(session)),
             sender: Arc::new(tx),
@@ -117,14 +112,6 @@ impl TrpcClient {
     pub async fn disconnect(self: &Arc<Self>) {
         let mut client = self.client.write().await;
         client.disconnect().await;
-        // 如果处于暂停状态则解除暂停状态防止堵塞
-        let status = self.trpc_status.clone();
-        let (lock, cvar) = &*status;
-        let mut state = lock.lock().unwrap();
-        if !*state {
-            *state = true;
-            cvar.notify_all();
-        }
         self.dispatcher.clear().await;
         self.sender.closed().await;
     }

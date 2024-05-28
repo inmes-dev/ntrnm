@@ -11,6 +11,7 @@ use ntrim_tools::crypto::qqtea::qqtea_decrypt;
 use ntrim_tools::flate2::decompress_deflate;
 
 pub use crate::client::codec::CodecError;
+use crate::client::codec;
 use crate::client::codec::encoder::default_tea_key;
 use crate::client::packet::from_service_msg::FromServiceMsg;
 use crate::client::packet::packet::CommandType::Service;
@@ -28,7 +29,6 @@ async fn loop_decode(trpc: &Arc<TrpcClient>) {
     let reader = client.reader();
     let mut reader = reader.lock().await;
     drop(client); // magic error
-
     let session = trpc.session.clone();
     loop {
         if trpc.is_lost().await {
@@ -97,12 +97,14 @@ async fn loop_decode(trpc: &Arc<TrpcClient>) {
         // read rest of the packet (no length)
         let mut data = vec![0u8; src.remaining()];
         src.copy_to_slice(&mut data);
-        let data = qqtea_decrypt(&data, tea_key);
+        let data = qqtea_decrypt(&data, tea_key).unwrap();
         let mut data = BytesMut::from(data.as_slice());
 
         let (seq, cmd, compression) = parse_head(&mut data);
 
-        info!("Recv packet from user_id: {}, cmd: {}, seq: {}", user_id, cmd, seq);
+        if *codec::enable_print_codec_logs() {
+            info!("Recv packet from user_id: {}, cmd: {}, seq: {}", user_id, cmd, seq);
+        }
 
         let mut body = vec![0u8; (data.get_u32() - 4) as usize];
         data.copy_to_slice(&mut body);

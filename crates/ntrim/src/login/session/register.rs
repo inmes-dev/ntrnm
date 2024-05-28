@@ -143,7 +143,7 @@ pub fn load_session(path: &str) -> SsoSession {
         sso_session.tgtgt_key = a1_with_tgtgt_key[a1_with_tgtgt_key.len() - 16..].to_vec();
     } else {
         warn!("Your A1 is invalid, try to decrypt with guid");
-        a1_with_tgtgt_key = qqtea_decrypt(a1_with_tgtgt_key.as_slice(), guid.as_slice());
+        a1_with_tgtgt_key = qqtea_decrypt(a1_with_tgtgt_key.as_slice(), guid.as_slice()).unwrap();
         sso_session.encrypt_a1 = a1_with_tgtgt_key[..a1_with_tgtgt_key.len() - 16].to_vec();
         sso_session.tgtgt_key = a1_with_tgtgt_key[a1_with_tgtgt_key.len() - 16..].to_vec();
     }

@@ -13,10 +13,10 @@ impl Bot {
         if d2.expire_time <= 0 {
             return;
         }
-        let refresh_advance_time = match option_env!("REFRESH_ADVANCE_TIME") {
-            None => 60 * 60 * 24 * 25,
-            Some(value) => value.parse::<i32>().unwrap_or(60 * 60 * 24 * 25),
-        }; // 提前3天刷新?
+        let refresh_advance_time = option_env!("REFRESH_ADVANCE_TIME")
+            .map_or(60 * 60 * 24 * 25, |value|
+                value.parse::<i32>().unwrap_or(60 * 60 * 24 * 25)
+            );
         let mut interval = (d2.expire_time as i32) - refresh_advance_time;
         let mut fail_time = 0;
         drop(session); // forbid magic error

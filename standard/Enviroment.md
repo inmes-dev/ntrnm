@@ -14,7 +14,6 @@ IS_NT_IPV6=1 ./ntrim
 
 | 参数名                  | 说明             | 默认值               |
 |----------------------|----------------|-------------------|
-| RUST_LOG             | 日志级别           | info              |
 | IS_NT_IPV6           | 是否启用 trpc IPv6 | 0                 |
 | NT_SEND_QUEUE_SIZE   | trpc协议发包队列大小   | 32                |
 | HEARTBEAT_INTERVAL   | 标准心跳间隔时间(秒)    | 270               |
@@ -46,3 +45,11 @@ IS_NT_IPV6=1 ./ntrim
 ```shell
 .\ntrim.exe -c [配置文件路径] session -s [质押会话路径] -i true
 ```
+
+## 开发者参数列表
+
+| 参数名                    | 说明         | 默认值  |
+|------------------------|------------|------|
+| RUST_LOG               | 日志级别       | info |
+| ENABLE_PRINT_CODEC_LOG | 是否打印编解码器日志 | 1    |
+

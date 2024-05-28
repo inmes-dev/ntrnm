@@ -128,7 +128,7 @@ pub mod wtlogin_request {
 
             let mut tlv_body = vec![0u8; reader.remaining() - 1];
             reader.copy_to_slice(&mut tlv_body);
-            let tlv_body = qqtea_decrypt(tlv_body.as_slice(), key).to_vec();
+            let tlv_body = qqtea_decrypt(tlv_body.as_slice(), key).unwrap();
             let mut tlv_body = BytesMut::from(tlv_body.as_slice());
             //let wt_sub_command = tlv_body.get_u16();
             tlv_body.advance(3); // wt_sub_command 00
@@ -139,7 +139,7 @@ pub mod wtlogin_request {
                     CommandType::ExchangeSig => session.tgtgt_key.clone(),
                     _ => panic!("Not supported wtlogin command: {:?}", self.command_type),
                 };
-                let t119 = qqtea_decrypt(t119.as_ref(), decrypt_key.as_slice());
+                let t119 = qqtea_decrypt(t119.as_ref(), decrypt_key.as_slice()).unwrap();
                 let mut t119 = BytesMut::from(t119.as_slice());
                 Self::parse_tlv(&mut t119).iter().for_each(|(k, v)| {
                     match *k {

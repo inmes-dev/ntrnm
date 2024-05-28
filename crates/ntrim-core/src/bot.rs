@@ -50,16 +50,10 @@ impl Bot {
             status: AtomicU32::new(BotStatus::Offline.bits()),
         });
         SyncPushServlet::initialize(&bot).await;
-        if match option_env!("AUTO_RECONNECT") {
-            None => true,
-            Some(value) => value == "1",
-        } {
+        if option_env!("AUTO_RECONNECT").map_or(true, |v| v == "1") {
             Self::auto_reconnect(&bot).await;
         }
-        if match option_env!("AUTO_REFRESH_SESSION") {
-            None => true,
-            Some(value) => value == "1",
-        } {
+        if option_env!("AUTO_REFRESH_SESSION").map_or(true, |v| v == "1") {
             Self::auto_refresh_session(&bot).await;
         }
 

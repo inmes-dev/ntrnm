@@ -104,8 +104,9 @@ impl TcpClient {
 
     pub(crate) async fn connect(&mut self) -> Result<(), ClientError> {
         if self.addr.is_none() {
-            let addrs = self.query_for_address().await?;
-            self.addr = Some(addrs.first().unwrap().clone());
+            let mut addrs = self.query_for_address().await?;
+            let addr = addrs.swap_remove(0);
+            self.addr = Some(addr);
         }
 
         let mut status = TcpStatus::from_bits(self.status.load(SeqCst)).unwrap();

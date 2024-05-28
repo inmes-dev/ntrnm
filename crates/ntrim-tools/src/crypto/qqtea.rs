@@ -46,7 +46,10 @@ pub fn qqtea_encrypt(text: &[u8], key: &[u8]) -> Vec<u8> {
     plaintext
 }
 
-pub fn qqtea_decrypt(text: &[u8], key: &[u8]) -> Vec<u8> {
+pub fn qqtea_decrypt(text: &[u8], key: &[u8]) -> Option<Vec<u8>> {
+    if text.len() < 16 || text.len() % 8 != 0 {
+        return None;
+    }
     let mut work_block: Vec<u64> = vec![0; text.len() / 8];
 
     BigEndian::read_u64_into(text, &mut work_block);
@@ -79,7 +82,7 @@ pub fn qqtea_decrypt(text: &[u8], key: &[u8]) -> Vec<u8> {
     let begin_pos = ((result[0] as usize) & 7) + 3;
     let end_pos = result.len() - 7;
 
-    result[begin_pos..end_pos].to_owned()
+    Some(result[begin_pos..end_pos].to_owned())
 }
 
 mod tea {
