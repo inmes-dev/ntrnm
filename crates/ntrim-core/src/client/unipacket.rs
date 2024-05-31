@@ -7,6 +7,7 @@ use crate::client::packet::{FromServiceMsg, ToServiceMsg};
 use crate::client::packet::packet::CommandType::{ExchangeSig, ExchangeSt, Register, Service};
 use crate::client::packet::packet::UniPacket;
 use crate::client::trpc::TrpcClient;
+use crate::commands;
 use crate::session::ticket::{SigType, TicketManager};
 
 impl TrpcClient {
@@ -27,6 +28,12 @@ impl TrpcClient {
         let session = session.read().await;
 
         let cmd = uni_packet.command.clone();
+
+        if cmd != "trpc.qq_new_tech.status_svc.StatusService.SsoHeartBeat" {
+            unsafe {
+                commands::register::heartbeat::LAST_PACKET_TIME = chrono::Utc::now().timestamp();
+            }
+        }
 
         let sec_info = if self.qsec.is_whitelist_command(cmd.as_str()).await {
             Some(self.qsec.sign(
