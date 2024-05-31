@@ -21,6 +21,7 @@ IS_NT_IPV6=1 ./ntrim
 | RECONNECT_INTERVAL   | trpc自动重连间隔(秒)  | 5                 |
 | AUTO_REFRESH_SESSION | 自动刷新质押的会话      | 1                 |
 | REFRESH_ADVANCE_TIME | 自动会话刷新时间提前(秒)  | 60 * 60 * 24 * 25 |
+| SQL_MAX_CONNECTIONS  | 数据库最大连接数       | 5                 |
 
 ### HEARTBEAT_INTERVAL
 
@@ -48,8 +49,12 @@ IS_NT_IPV6=1 ./ntrim
 
 ## 开发者参数列表
 
-| 参数名                    | 说明         | 默认值  |
-|------------------------|------------|------|
-| RUST_LOG               | 日志级别       | info |
-| ENABLE_PRINT_CODEC_LOG | 是否打印编解码器日志 | 1    |
+| 参数名                     | 说明         | 默认值  |
+|-------------------------|------------|------|
+| RUST_LOG                | 日志级别       | info |
+| ENABLE_PRINT_CODEC_LOG  | 是否打印编解码器日志 | 1    |
+| ENABLE_PRINT_PUSHPARAMS | 是否打印推送参数   | 0    |
 
+### ENABLE_PRINT_PUSHPARAMS
+
+默认开启，可以在日志中查看推送的参数，例如当前在线设备数量还有在线哪些设备，这些数据不会被缓存！

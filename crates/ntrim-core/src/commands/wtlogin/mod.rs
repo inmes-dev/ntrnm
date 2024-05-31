@@ -68,7 +68,7 @@ pub mod wtlogin_request {
             buf.put_u8(3);
             buf.put_u8(encrypt_key.0);
             buf.put_u8(0);
-            buf.put_u32(2);
+            buf.put_u32(2); // android -> 2
             buf.put_u32(0);
             buf.put_u32(0);
             buf.put_slice(encrypt_body.as_slice());
@@ -215,8 +215,8 @@ pub mod wtlogin_request {
                                 let time = v.get_u32();
 
                                 let expire_time = time as u64 + current_time_sec;
-                                let expire_time = DateTime::from_timestamp(expire_time as i64, 0).unwrap();
-                                info!("t{:x} expired time：{:?}", ver, expire_time);
+                                //let expire_time = DateTime::from_timestamp(expire_time as i64, 0).unwrap();
+                                //info!("t{:x} expired time：{:?}", ver, expire_time);
 
                                 match ver {
                                     0x106 => {},
@@ -228,7 +228,7 @@ pub mod wtlogin_request {
                                     0x143 => {
                                         let mut ticket = session.ticket_mut(SigType::D2).unwrap();
                                         ticket.create_time = current_time_sec;
-                                        ticket.expire_time = time;
+                                        ticket.expire_time = expire_time;
                                     }
                                     0x164 => {}
                                     _ => warn!("Unknown tlv_t{:x}", ver)

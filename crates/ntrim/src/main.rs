@@ -48,6 +48,12 @@ async fn main() {
             .expect("Configuration file parsing failure")
     };
 
+    #[cfg(feature = "sql")]
+    {
+        ntrim_core::initialize_pool(&config.sql.address).await;
+        ntrim_core::db::ensure_table_exists().await.expect("Failed to ensure table exists");
+    }
+
     let ((bot, mut result), immediate_refresh) = match args.login_mode {
         LoginMode::Password { qq, password } => {
             panic!("Password login is not supported yet")

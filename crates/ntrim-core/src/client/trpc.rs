@@ -1,33 +1,25 @@
 use std::fmt::Write;
-use std::future::Future;
-use std::sync::{Arc, Condvar, Mutex};
-use std::thread::sleep;
-use anyhow::Error;
+use std::sync::{Arc};
 use bytes::{BufMut, BytesMut};
-use log::{debug, error, info, warn};
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::{oneshot, RwLock};
+use log::{info, warn};
+use tokio::sync::mpsc::{Sender};
+use tokio::sync::{RwLock};
 use tokio::time::Duration;
-use ntrim_tools::tokiort;
 use crate::client::codec::decoder::TrpcDecoder;
 use crate::client::codec::encoder::TrpcEncoder;
 use crate::client::dispatcher::TrpcDispatcher;
-use crate::client::packet::from_service_msg::FromServiceMsg;
-use crate::client::packet::packet::CommandType::{*};
-use crate::client::tcp::{TcpStatus, TcpClient};
-use crate::client::packet::packet::UniPacket;
+use crate::client::tcp::{TcpClient};
 use crate::client::packet::to_service_msg::ToServiceMsg;
 use crate::client::qsecurity::QSecurity;
 use crate::session::SsoSession;
-use crate::session::ticket::{SigType, TicketManager};
 pub use crate::client::tcp::ClientError;
 
 pub struct TrpcClient {
     pub(crate) client: Arc<RwLock<TcpClient>>,
     pub session: Arc<RwLock<SsoSession>>,
     pub qsec: Arc<dyn QSecurity>,
-    pub sender: Arc<Sender<ToServiceMsg>>,
-    pub dispatcher: Arc<TrpcDispatcher>
+    pub(crate) sender: Arc<Sender<ToServiceMsg>>,
+    pub(crate) dispatcher: Arc<TrpcDispatcher>
 }
 
 impl TrpcClient {

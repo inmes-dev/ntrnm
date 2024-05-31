@@ -8,7 +8,7 @@ use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::oneshot::error::RecvError;
 use ntrim_core::bot::{Bot, BotStatus};
-use ntrim_core::{await_response, commands};
+use ntrim_core::{await_response, commands, service};
 use ntrim_core::commands::wtlogin::refresh_sig::RefreshSig;
 use ntrim_core::commands::wtlogin::wtlogin_request::{WtloginFactory, WtloginBuilder};
 use ntrim_core::events::wtlogin_event::WtloginResponse;
@@ -48,13 +48,15 @@ pub async fn token_login(session_path: String, config: &Config) -> (Arc<Bot>, Re
                     let msg = resp.msg.unwrap_or("protobuf parser error".to_string());
                     if msg == "register success" {
                         info!("Bot register req to online success, Welcome!");
+
+                        println!("RichMedia DownloadRKey: {:?}", service::rich_media::get_download_reky(&bot, 10).await);
+
                         // 注册退出信号监听器 自动保存会话上下文
                         ntrim_tools::sigint::global_sigint_handler().add_listener(Pin::from(Box::new(async move {
                             info!("Received SIGINT, saving session and exiting");
                             let session = bot.client.session.read().await;
                             save_session(&session_path, session.deref());
                         })));
-
                         if !tx.is_closed() {
                             tx.send(WtloginResponse::Success()).await.map_err(|e| {
                                 error!("Failed to send login response: {:?}", e)

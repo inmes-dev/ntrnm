@@ -1,9 +1,8 @@
 mod builder;
 mod reader;
 
-use std::string::FromUtf8Error;
 use bitflags::bitflags;
-use bytes::{Buf, BufMut, BytesMut};
+use bytes::{Buf, BufMut};
 pub use builder::BytePacketBuilder;
 pub use reader::BytePacketReader;
 

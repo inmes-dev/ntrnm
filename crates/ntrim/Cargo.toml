@@ -21,9 +21,10 @@ categories = ["web-programming", "api-bindings", "asynchronous"]
 
 
 [features]
-default = ["rustls", "onebot"]
+default = ["rustls", "onebot", "sql"]
 native-tls = ["ntrim-core/native-tls"]
 rustls = ["ntrim-core/rustls"]
+sql = ["ntrim-core/sql"]
 
 # backend
 onebot = []

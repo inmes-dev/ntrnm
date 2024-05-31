@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use bytes::{BufMut, BytesMut};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum CommandType {

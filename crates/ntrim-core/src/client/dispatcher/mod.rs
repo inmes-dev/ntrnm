@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use log::{debug, error, info};
+use log::{debug, error};
 use tokio::sync::{mpsc, Mutex, oneshot};
 use crate::client::packet::from_service_msg::FromServiceMsg;
 

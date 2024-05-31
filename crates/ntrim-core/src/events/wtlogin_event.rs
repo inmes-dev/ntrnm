@@ -1,5 +1,4 @@
-use std::sync::Arc;
-use crate::bot::Bot;
+
 
 #[derive(Debug)]
 pub enum WtloginResponse {

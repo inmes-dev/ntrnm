@@ -5,7 +5,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::process::exit;
 use std::thread;
 
-use tokio::runtime;
 use crate::tokiort::global_tokio_runtime;
 
 pub struct SigintHandler<F>

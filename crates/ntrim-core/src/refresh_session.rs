@@ -1,4 +1,5 @@
 use std::sync::{Arc, OnceLock};
+use chrono::Local;
 use log::{error, info, warn};
 use crate::bot::Bot;
 use crate::commands::wtlogin::wtlogin_request::{WtloginBuilder, WtloginFactory};
@@ -15,9 +16,10 @@ impl Bot {
         }
         let refresh_advance_time = option_env!("REFRESH_ADVANCE_TIME")
             .map_or(60 * 60 * 24 * 25, |value|
-                value.parse::<i32>().unwrap_or(60 * 60 * 24 * 25)
+                value.parse::<i64>().unwrap_or(60 * 60 * 24 * 25)
             );
-        let mut interval = (d2.expire_time as i32) - refresh_advance_time;
+        let mut interval = d2.expire_time as i64 - Local::now().timestamp() - refresh_advance_time;
+        info!("Next refresh session in {} seconds", interval);
         let mut fail_time = 0;
         drop(session); // forbid magic error
         tokio::spawn(async move {
@@ -37,6 +39,9 @@ impl Bot {
                         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                         warn!("Refresh session successfully, reconnect failed!");
                     }
+                    let session = bot.client.session.read().await;
+                    let d2 = session.ticket(SigType::D2).unwrap();
+                    interval = d2.expire_time as i64 - Local::now().timestamp() - refresh_advance_time;
                 }
             }
         });

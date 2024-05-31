@@ -1,5 +1,6 @@
 use std::ops::Deref;
 use std::process::exit;
+use chrono::Local;
 use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
 use ntrim_core::session::device::Device;
@@ -51,11 +52,7 @@ pub fn save_session(path: &str, session: &SsoSession) {
         }
         ticket_data.insert("sigKey".to_string(), serde_json::Value::String(hex::encode(t.sig_key.as_slice())));
         ticket_data.insert("createTime".to_string(), serde_json::Value::Number(serde_json::Number::from(t.create_time)));
-        if t.expire_time != 0 {
-            ticket_data.insert("expireTime".to_string(), serde_json::Value::Number(serde_json::Number::from(t.create_time + t.expire_time as u64)));
-        } else {
-            ticket_data.insert("expireTime".to_string(), serde_json::Value::Number(serde_json::Number::from(0)));
-        }
+        ticket_data.insert("expireTime".to_string(), serde_json::Value::Number(serde_json::Number::from(t.expire_time)));
         ticket.insert(id.bits().to_string(), serde_json::Value::Object(ticket_data));
     }
     data.insert("ticket".to_string(), serde_json::Value::Object(ticket));
@@ -168,17 +165,12 @@ pub fn load_session(path: &str) -> SsoSession {
         let key = hex::decode(v["sigKey"].as_str().unwrap()).unwrap();
         let create_time = v["createTime"].as_i64().unwrap();
         let expire_time = v["expireTime"].as_i64().unwrap();
-        let expire_time = if expire_time == 0 {
-            0
-        } else {
-            (expire_time - create_time) as u32
-        };
         sso_session.insert(Ticket {
             id: sig_type,
             sig_key: key,
             sig: Some(sig),
             create_time: create_time as u64,
-            expire_time,
+            expire_time: expire_time as u64,
         });
     }
     return sso_session;

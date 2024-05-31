@@ -1,22 +1,15 @@
-use std::{fmt, thread};
-use std::ops::Deref;
-use std::pin::Pin;
-use std::process::exit;
+use std::{fmt};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering::SeqCst;
-use std::time::Duration;
 use anyhow::Error;
 use bitflags::bitflags;
-use log::{debug, error, info, warn};
-use tokio::sync::mpsc;
+use log::{warn};
 use ntrim_tools::tokiort;
-use crate::await_response;
 use crate::client::qsecurity::QSecurity;
 use crate::client::trpc::TrpcClient;
-use crate::events::wtlogin_event::WtloginResponse;
-use crate::events::wtlogin_event::WtloginResponse::Success;
-use crate::servlet::sync_push::SyncPushServlet;
+use crate::servlet::msg_push::OlPushServlet;
+use crate::servlet::sync_push::RegisterProxyServlet;
 use crate::session::SsoSession;
 
 bitflags! {
@@ -49,7 +42,9 @@ impl Bot {
             client,
             status: AtomicU32::new(BotStatus::Offline.bits()),
         });
-        SyncPushServlet::initialize(&bot).await;
+        RegisterProxyServlet::initialize(&bot).await;
+        OlPushServlet::initialize(&bot).await;
+
         if option_env!("AUTO_RECONNECT").map_or(true, |v| v == "1") {
             Self::auto_reconnect(&bot).await;
         }

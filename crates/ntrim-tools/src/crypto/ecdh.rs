@@ -1,5 +1,4 @@
 // copy from https://github.com/lz1998/ricq/blob/46c44a3/ricq-core/src/crypto/encrypt.rs
-use bytes::{Bytes};
 use tokio::sync::OnceCell;
 // use openssl::bn::{BigNum, BigNumContext};
 // use openssl::ec::{EcGroup, EcPoint, EcKey, PointConversionForm};

@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+package oidb;
+
+message TrpcOidbRequest {
+  required uint32 cmd = 1;
+  required uint32 service = 2;
+  required bytes body = 4;
+  optional uint32 nt_flag = 12;
+}
+
+message TrpcOidbResponse {
+  required uint32 cmd = 1;
+  required uint32 service = 2;
+  required uint32 result = 3;
+  required bytes body = 4;
+  optional uint32 nt_flag = 12;
+}

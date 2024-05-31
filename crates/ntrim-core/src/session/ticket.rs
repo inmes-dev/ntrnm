@@ -42,10 +42,7 @@ pub struct Ticket {
     /// e.g. d2
     pub sig: Option<Vec<u8>>,
     pub create_time: u64,
-    /// 0 means never expire
-    /// unit is seconds -> expires after n seconds
-    /// `1` means expire after 1 second
-    pub expire_time: u32,
+    pub expire_time: u64,
 }
 
 impl Display for Ticket {

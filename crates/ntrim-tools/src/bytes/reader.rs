@@ -1,5 +1,5 @@
 use std::string::FromUtf8Error;
-use bytes::{Buf, BufMut, BytesMut};
+use bytes::{Buf};
 use crate::bytes::{PacketFlag};
 
 pub trait BytePacketReader: Buf {
@@ -16,7 +16,7 @@ pub trait BytePacketReader: Buf {
         where Self: Sized
     {
         let mut tmp = 0;
-        let mut len = if packet_flag.contains(PacketFlag::I16Len) {
+        let len = if packet_flag.contains(PacketFlag::I16Len) {
             if packet_flag.contains(PacketFlag::ExtraLen) { tmp = 2; }
             self.get_i16() as usize
         } else if packet_flag.contains(PacketFlag::I32Len) {

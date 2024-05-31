@@ -1,4 +1,3 @@
-use std::cell::OnceCell;
 use std::io;
 use std::sync::OnceLock;
 use anyhow::Error;
@@ -15,9 +14,7 @@ pub enum CodecError {
     #[error("Tea_key length is invalid")]
     InvalidTeaKey,
     #[error("IO error")]
-    IoError,
-    #[error("Not connect to server")]
-    NotConnectError
+    IoError
 }
 
 impl From<io::Error> for CodecError {
