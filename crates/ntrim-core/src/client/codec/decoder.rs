@@ -75,7 +75,7 @@ async fn loop_decode(trpc: &Arc<TrpcClient>) {
 
         let tea_key = match encrypted_flag {
             1 => session.get_session_key(Service),
-            0 => { continue; }
+            0 => { continue; } // heartbeat
             _ => default_tea_key()
         };
         if tea_key.len() != 16 {
@@ -97,6 +97,12 @@ async fn loop_decode(trpc: &Arc<TrpcClient>) {
 
         if *codec::enable_print_codec_logs() {
             info!("Recv packet from user_id: {}, cmd: {}, seq: {}", user_id, cmd, seq);
+        }
+
+        if cmd != "trpc.qq_new_tech.status_svc.StatusService.SsoHeartBeat" {
+            unsafe {
+                codec::LAST_PACKET_TIME = chrono::Utc::now().timestamp();
+            }
         }
 
         let mut body = vec![0u8; (data.get_u32() - 4) as usize];

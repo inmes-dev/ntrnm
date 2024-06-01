@@ -49,7 +49,7 @@ pub async fn token_login(session_path: String, config: &Config) -> (Arc<Bot>, Re
                     if msg == "register success" {
                         info!("Bot register req to online success, Welcome!");
 
-                        println!("RichMedia DownloadRKey: {:?}", service::rich_media::get_download_reky(&bot, 10).await);
+                        info!("RichMedia DownloadRKey: {:?}", service::rich_media::get_download_reky(&bot, 10).await);
 
                         // 注册退出信号监听器 自动保存会话上下文
                         ntrim_tools::sigint::global_sigint_handler().add_listener(Pin::from(Box::new(async move {

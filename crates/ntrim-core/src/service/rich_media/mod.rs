@@ -8,14 +8,14 @@ use crate::bot::Bot;
 
 #[derive(Debug, Clone)]
 pub struct RKey {
-    pub flag: u32,
+    pub flag: u8,
     pub key: String,
     pub ttl: i32,
     pub expire_time: i64,
 }
 
 impl RKey {
-    pub fn new(flag: u32, key: String, ttl: i32, expire_time: i64) -> Self {
+    pub fn new(flag: u8, key: String, ttl: i32, expire_time: i64) -> Self {
         Self {
             flag,
             key,
@@ -29,9 +29,9 @@ impl RKey {
     }
 }
 
-static mut RKEY: Lazy<Mutex<HashMap<u32, RKey>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+static mut RKEY: Lazy<Mutex<HashMap<u8, RKey>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
-pub async fn get_download_reky(bot: &Arc<Bot>, flag: u32) -> Result<Option<RKey>, Error> {
+pub async fn get_download_reky(bot: &Arc<Bot>, flag: u8) -> Result<Option<RKey>, Error> {
     let refresh_rkey = || async {
         let value =  await_response!(tokio::time::Duration::from_secs(5), async {
             let rx = Bot::request_download_rkey(bot).await;
@@ -56,8 +56,9 @@ pub async fn get_download_reky(bot: &Arc<Bot>, flag: u32) -> Result<Option<RKey>
         };;
         unsafe {
             for key in rsp.rkeys {
-                RKEY.lock().await.insert(flag, RKey::new(
-                    key.r#type.unwrap(), key.rkey, key.rkey_ttl_sec as i32, key.rkey_create_time.unwrap() as i64 + key.rkey_ttl_sec as i64
+                let r#type = key.r#type.unwrap() as u8;
+                RKEY.lock().await.insert(r#type, RKey::new(
+                    r#type, key.rkey, key.rkey_ttl_sec as i32, key.rkey_create_time.unwrap() as i64 + key.rkey_ttl_sec as i64
                 ));
             }
         }

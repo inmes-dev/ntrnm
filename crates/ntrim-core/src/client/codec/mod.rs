@@ -17,6 +17,8 @@ pub enum CodecError {
     IoError
 }
 
+pub(crate) static mut LAST_PACKET_TIME: i64 = 0i64;
+
 impl From<io::Error> for CodecError {
     fn from(value: io::Error) -> Self {
         CodecError::CodecError(Error::new(value))
