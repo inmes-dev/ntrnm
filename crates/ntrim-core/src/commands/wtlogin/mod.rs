@@ -207,7 +207,7 @@ pub mod wtlogin_request {
                         }
                         0x136 => {}
                         0x138 => {
-                            let current_time_sec = chrono::Utc::now().timestamp() as u64;
+                            let current_time_sec = chrono::Local::now().timestamp() as u64;
                             let mut v = BytesMut::from(v.as_ref());
                             let count = v.get_u32();
                             for _ in 0..count {

@@ -172,7 +172,7 @@ fn generate_qqsecurity_head(
     qq_sec.message_type = 34;
 
     // 获取当前时间戳
-    let timestamp = chrono::Utc::now().timestamp().to_string();
+    let timestamp = chrono::Local::now().timestamp().to_string();
     let entry = SsoMapEntry {
         key: "client_conn_seq".to_string(),
         value: timestamp.into_bytes(),

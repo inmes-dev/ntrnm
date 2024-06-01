@@ -1,5 +1,6 @@
 use std::sync::atomic::Ordering::SeqCst;
 use std::time::Duration;
+use chrono::Local;
 use log::info;
 use prost::Message;
 use tokio::time::{Instant, interval};
@@ -12,7 +13,7 @@ struct NtHeartBeatBuilder;
 #[command("trpc.qq_new_tech.status_svc.StatusService.SsoHeartBeat", "send_nt_heartbeat", Protobuf, Service)]
 impl NtHeartBeatBuilder {
     async fn generate(bot: &Arc<Bot>) -> Option<Vec<u8>> {
-        let current_time = chrono::Utc::now().timestamp();
+        let current_time = Local::now().timestamp();
 
         let level = 83;
         let charging = 1;
@@ -22,7 +23,7 @@ impl NtHeartBeatBuilder {
         req.battery_state = (req.battery_state & !0x7F) | (level as u32 & 0x7F);
         req.battery_state = (req.battery_state & !(1 << 7)) | ((charging as u32 & 0x01) << 7);
         req.time = current_time as u64;
-        req.local_silence = SilenceState { local_silence: 1u32 };
+        req.local_silence = SilenceState { local_silence: 1 };
         Some(req.encode_to_vec())
     }
 

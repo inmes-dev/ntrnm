@@ -8,8 +8,8 @@ use log::{warn};
 use ntrim_tools::tokiort;
 use crate::client::qsecurity::QSecurity;
 use crate::client::trpc::TrpcClient;
-use crate::servlet::msg_push::OlPushServlet;
-use crate::servlet::sync_push::RegisterProxyServlet;
+use crate::servlet::olpush::OlPushServlet;
+use crate::servlet::register::RegisterProxyServlet;
 use crate::session::SsoSession;
 
 bitflags! {

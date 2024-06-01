@@ -40,7 +40,8 @@ reqwest = { version = "0.12.2", features = [
     "http2",
 ], default-features = false }
 sqlx = { version = "0.7", features = [ "runtime-tokio", "tls-rustls", "postgres", "chrono"], optional = true  }
-prost = "0.12.3"
+prost = "0.12.6"
+jcers = { version = "0.1.2", features = ["derive"] }
 log = "0.4.21"
 url = { version = "2.5.0", features = ["serde"] }
 serde = { version = "1.0.197", features = ["derive"] }

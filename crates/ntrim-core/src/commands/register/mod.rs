@@ -17,7 +17,6 @@ impl RegisterBuilder {
     async fn generate(bot: &Arc<Bot>) -> Option<Vec<u8>> {
         let session = bot.client.session.clone();
         let mut session = session.write().await;
-        let current_time = chrono::Utc::now().timestamp();
         //info!("Generating register request for bot: {:?}, time: {}", session.uid, current_time);
         //session.last_grp_msg_time = (current_time as u64) - (60 * 5);
 

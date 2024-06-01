@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+package trpc.olpush;
+
+import "trpc/olpush/comm_msg.proto";
+
+message MsgPush {
+  required RoutingHead routing_head = 1;
+  required ContentHead content_head = 2;
+  required MessageBody msg_body = 3;
+}

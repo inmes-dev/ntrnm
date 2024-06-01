@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package trpc.olpush;
+
+message Elem {
+  oneof elem {
+    Text text = 1;
+  };
+}
+
+message Text {
+  required string text = 1;
+}

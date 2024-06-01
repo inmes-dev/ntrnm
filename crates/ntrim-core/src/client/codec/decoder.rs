@@ -101,7 +101,7 @@ async fn loop_decode(trpc: &Arc<TrpcClient>) {
 
         if cmd != "trpc.qq_new_tech.status_svc.StatusService.SsoHeartBeat" {
             unsafe {
-                codec::LAST_PACKET_TIME = chrono::Utc::now().timestamp();
+                codec::LAST_PACKET_TIME = chrono::Local::now().timestamp();
             }
         }
 

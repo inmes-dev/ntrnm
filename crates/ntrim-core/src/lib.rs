@@ -10,6 +10,7 @@ pub mod service;
 pub(crate) mod pb;
 pub(crate) mod servlet;
 pub(crate) mod reconnect;
+pub(crate) mod jce;
 
 
 #[cfg(feature = "sql")]

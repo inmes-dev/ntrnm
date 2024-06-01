@@ -1,6 +1,6 @@
 use std::fmt::format;
 use anyhow::Error;
-use chrono::{DateTime, NaiveDateTime, Timelike, Utc};
+use chrono::{NaiveDateTime};
 use sqlx::{FromRow, PgPool};
 
 #[derive(Debug, FromRow)]
