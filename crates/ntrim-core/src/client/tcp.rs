@@ -111,7 +111,7 @@ impl TcpClient {
 
         let mut status = TcpStatus::from_bits(self.status.load(SeqCst)).unwrap();
 
-        info!("Connecting to server: {:?}", self.addr);
+        //info!("Connecting to server: {:?}", self.addr);
         let tcp = if status.contains(TcpStatus::Ipv4Addr) {
             TcpSocket::new_v4()
         } else {
@@ -133,6 +133,8 @@ impl TcpClient {
         status.set(TcpStatus::Disconnected, false);
         status.set(TcpStatus::Lost, false);
         self.status.store(status.bits(), SeqCst);
+
+        info!("Connected to server: {:?}", self.addr);
 
         Ok(())
     }

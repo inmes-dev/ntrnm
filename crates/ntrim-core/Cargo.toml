@@ -17,12 +17,10 @@ categories = ["api-bindings", "asynchronous"]
 
 [features]
 # NB: When adding features here, don't forget to update ntrim's Cargo.toml
-default = ["rustls", "sql"]
-rustls = ["reqwest/rustls-tls"]
-native-tls = ["reqwest/native-tls"]
+default = ["sql"]
 sql = ["sqlx"]
 
-full = ["rustls", "sql"]
+full = ["sql"]
 
 
 [dependencies]
@@ -38,6 +36,7 @@ reqwest = { version = "0.12.2", features = [
     "gzip",
     "deflate",
     "http2",
+    "rustls-tls"
 ], default-features = false }
 sqlx = { version = "0.7", features = [ "runtime-tokio", "tls-rustls", "postgres", "chrono"], optional = true  }
 prost = "0.12.6"

@@ -169,8 +169,8 @@ pub fn load_session(path: &str) -> SsoSession {
             id: sig_type,
             sig_key: key,
             sig: Some(sig),
-            create_time: create_time as u64,
-            expire_time: expire_time as u64,
+            create_time,
+            expire_time,
         });
     }
     return sso_session;

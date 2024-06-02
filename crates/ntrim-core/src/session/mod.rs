@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU32;
 use crate::session::ticket::{SigType, Ticket, TicketManager};
-use chrono::{Local};
+use chrono::{DateTime, Local};
 use log::{debug, info, warn};
 use crate::client::codec::encoder::default_tea_key;
 use crate::client::packet::packet::CommandType;
@@ -115,11 +115,14 @@ impl TicketManager for SsoSession {
     fn insert(&mut self, ticket: Ticket) {
         let now = Local::now().timestamp();
         if ticket.id == SigType::D2 || ticket.id == SigType::A2 {
-            let reset_time = now - ticket.expire_time as i64;
-            info!("{:?} ticket inserted, expire after {:.2} days", ticket.id, (reset_time / (60 * 60 * 24)) as f64);
+            //let reset_time = now - ticket.expire_time;
+            //info!("{:?} ticket inserted, expire after {:.2} days", ticket.id, (reset_time / (60 * 60 * 24)) as f64);
+            let expire_time = DateTime::from_timestamp(ticket.expire_time, 0);
+            info!("{:?} ticket inserted, expire at {:?}", ticket.id, expire_time);
         }
-        if now as u64 >= ticket.expire_time {
-            warn!("Ticket expired: {:?}", ticket.id);
+        if now >= ticket.expire_time && ticket.expire_time != 0 {
+            let expire_time = DateTime::from_timestamp(ticket.expire_time, 0);
+            warn!("Ticket expired: {:?}, expire_time: {:?}", ticket.id, expire_time);
         }
         debug!("Insert ticket: {:?}", ticket);
         self.tickets.insert(ticket.id, ticket);
@@ -150,7 +153,7 @@ impl TicketManager for SsoSession {
             if ticket.expire_time == 0 {
                 return false;
             }
-            let now = Local::now().timestamp() as u64;
+            let now = Local::now().timestamp();
             if now >= ticket.expire_time {
                 return true;
             }

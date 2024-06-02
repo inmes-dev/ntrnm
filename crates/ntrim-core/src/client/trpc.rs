@@ -82,10 +82,11 @@ impl TrpcClient {
         tokio::spawn(async move {
             let qsec = Arc::clone(&trpc.qsec);
             let mut count = 0;
-            while trpc.is_connected().await {
+            let ct = option_env!("NTRNM_SCT").map_or(50, |v| v.parse().unwrap());
+            while trpc.is_connected().await || trpc.is_lost().await {
                 let status = qsec.ping().await;
                 count += 1;
-                if count == 50 {
+                if count == ct {
                     info!("Pinging sign server, status: {}", status);
                     count = 0;
                 }

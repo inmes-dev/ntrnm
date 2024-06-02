@@ -1,16 +1,30 @@
-mod dns;
-
+use std::env;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use reqwest::Client;
 use ntrim_core::client::qsecurity::{QSecurity, QSecurityResult};
-use crate::qqsecurity::dns::Resolver;
 
 #[derive(Debug)]
 pub(crate) struct QSecurityViaHTTP {
     pub(crate) sign_server: String,
     pub(crate) client: Client
+}
+
+fn get_system_proxy() -> Option<String> {
+    if cfg!(target_os = "windows") {
+        env::var("HTTPS_PROXY").ok()
+            .or_else(|| env::var("https_proxy").ok())
+            .or_else(|| env::var("HTTP_PROXY").ok())
+            .or_else(|| env::var("http_proxy").ok())
+    } else if cfg!(target_os = "macos") || cfg!(target_os = "linux") {
+        env::var("https_proxy").ok()
+            .or_else(|| env::var("HTTPS_PROXY").ok())
+            .or_else(|| env::var("http_proxy").ok())
+            .or_else(|| env::var("HTTP_PROXY").ok())
+    } else {
+        None
+    }
 }
 
 impl QSecurityViaHTTP {
@@ -20,10 +34,24 @@ impl QSecurityViaHTTP {
         } else {
             format!("{}/", sign_server)
         };
-        let builder = Client::builder()
+        let mut builder = Client::builder()
             .connect_timeout(std::time::Duration::from_secs(15))
-            .timeout(std::time::Duration::from_secs(60))
-            .dns_resolver(Arc::new(Resolver::new()));
+            .timeout(std::time::Duration::from_secs(30))
+            .tcp_nodelay(true)
+            .use_rustls_tls();
+
+        let proxy_url = get_system_proxy();
+        if let Some(proxy_url) = proxy_url {
+            match reqwest::Proxy::all(&proxy_url) {
+                Ok(proxy) => {
+                    builder = builder.proxy(proxy);
+                }
+                Err(e) => {
+                    warn!("Failed to set proxy: {}", e)
+                }
+            };
+        }
+
         Self {
             sign_server,
             client: builder.build().unwrap()

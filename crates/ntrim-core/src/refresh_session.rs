@@ -15,11 +15,11 @@ impl Bot {
             return;
         }
         let refresh_advance_time = option_env!("REFRESH_ADVANCE_TIME")
-            .map_or(60 * 60 * 24 * 25, |value|
-                value.parse::<i64>().unwrap_or(60 * 60 * 24 * 25)
+            .map_or(60 * 60 * 24, |value|
+                value.parse::<i64>().unwrap_or(60 * 60 * 24)
             );
-        let mut interval = d2.expire_time as i64 - Local::now().timestamp() - refresh_advance_time;
-        info!("Next refresh session in {} seconds", interval);
+        let mut interval = d2.expire_time as i64 - Local::now().timestamp();
+        info!("Next refresh session in {:.2} days", interval / (60 * 60 * 24));
         let mut fail_time = 0;
         drop(session); // forbid magic error
         tokio::spawn(async move {

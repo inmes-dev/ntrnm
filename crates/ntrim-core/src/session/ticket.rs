@@ -41,8 +41,8 @@ pub struct Ticket {
     pub sig_key: Vec<u8>,
     /// e.g. d2
     pub sig: Option<Vec<u8>>,
-    pub create_time: u64,
-    pub expire_time: u64,
+    pub create_time: i64,
+    pub expire_time: i64,
 }
 
 impl Display for Ticket {

@@ -207,14 +207,14 @@ pub mod wtlogin_request {
                         }
                         0x136 => {}
                         0x138 => {
-                            let current_time_sec = chrono::Local::now().timestamp() as u64;
+                            let current_time_sec = chrono::Local::now().timestamp();
                             let mut v = BytesMut::from(v.as_ref());
                             let count = v.get_u32();
                             for _ in 0..count {
                                 let ver = v.get_u16();
                                 let time = v.get_u32();
 
-                                let expire_time = time as u64 + current_time_sec;
+                                let expire_time = time as i64 + current_time_sec;
                                 //let expire_time = DateTime::from_timestamp(expire_time as i64, 0).unwrap();
                                 //info!("t{:x} expired time：{:?}", ver, expire_time);
 
