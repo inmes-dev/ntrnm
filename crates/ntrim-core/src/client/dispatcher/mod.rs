@@ -35,10 +35,10 @@ impl TrpcDispatcher {
         persistent.insert(cmd, sender);
     }
 
-    pub async fn register_multiple_persistent(&self, cmd: Vec<String>, sender: mpsc::Sender<FromServiceMsg>) {
+    pub async fn register_multiple_persistent(&self, cmds: Vec<String>, sender: mpsc::Sender<FromServiceMsg>) {
         let mut persistent = self.persistent.lock().await;
-        debug!("Registering persistent, cmd: {:?}", cmd);
-        cmd.iter().for_each(|c| {
+        debug!("Registering persistent, cmd: {:?}", cmds);
+        cmds.iter().for_each(|c| {
             persistent.insert(c.clone(), sender.clone());
         });
     }

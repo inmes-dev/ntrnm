@@ -68,7 +68,7 @@ pub fn save_session(path: &str, session: &SsoSession) {
     data.insert("sigs".to_string(), serde_json::Value::Object(sigs));
 
     /// 记录黑盒最后时间
-    data.insert("update_time".to_string(), serde_json::Value::String(chrono::Utc::now().to_rfc3339()));
+    data.insert("update_time".to_string(), serde_json::Value::String(Local::now().to_rfc3339()));
 
     let data = serde_json::Value::Object(data);
     std::fs::write(path, serde_json::to_string_pretty(&data).unwrap()).unwrap();
@@ -80,7 +80,7 @@ fn is_valid_en_a1(en_a1: &[u8]) -> bool {
 
 /// 载入克隆体
 pub fn load_session(path: &str) -> SsoSession {
-    let current_sec_time = chrono::Utc::now().timestamp();
+    let current_sec_time = Local::now().timestamp();
     info!("Loading cache session from {}", path);
     let data = std::fs::read_to_string(path).unwrap();
     let session_data: serde_json::Value = serde_json::from_str(&data).unwrap();

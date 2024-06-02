@@ -98,7 +98,7 @@ impl TrpcClient {
         self.dispatcher.register_persistent(cmd, sender).await;
     }
 
-    pub async fn register_multiple_persistent(self: &Arc<TrpcClient>, cmd: Vec<String>, sender: Sender<FromServiceMsg>) {
-        self.dispatcher.register_multiple_persistent(cmd, sender).await;
+    pub async fn register_multiple_persistent(self: &Arc<TrpcClient>, cmds: Vec<String>, sender: Sender<FromServiceMsg>) {
+        self.dispatcher.register_multiple_persistent(cmds, sender).await;
     }
 }

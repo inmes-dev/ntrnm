@@ -89,6 +89,7 @@ $ ntrnm --help
 # License
 
  * [GPLv3 license](https://opensource.org/license/gpl-3-0)
+ * [MPL from Ricq](https://github.com/lz1998/ricq/blob/master/LICENSE)
 
 ## Contribution
 

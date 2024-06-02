@@ -1,6 +1,6 @@
 use std::cell::OnceCell;
 use std::sync::{Arc, OnceLock};
-use chrono::DateTime;
+use chrono::{DateTime, NaiveDateTime};
 use log::{info, warn};
 use prost::{DecodeError, Message};
 use ntrim_macros::servlet;
@@ -38,7 +38,7 @@ impl RegisterProxyServlet {
                     seq: node.msg_seq as i64,
                     last_seq: node.longest_msg_seq.map_or(0, |v| v as i64),
                     name: node.peer_name.clone(),
-                    latest_msg_time: DateTime::from_timestamp(node.latest_msg_time as i64, 0).unwrap().naive_utc(),
+                    latest_msg_time: NaiveDateTime::from_timestamp(node.latest_msg_time as i64, 0),
                 };
                 SimpleMessageRecord::insert(pool, record).await.map_err(|e| {
                     warn!("Failed to insert group_simple_record to pgsql: {:?}", e);

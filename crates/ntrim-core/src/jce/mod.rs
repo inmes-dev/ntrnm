@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 use jcers::{JceGet, JcePut};
 
 #[macro_export]
@@ -45,6 +45,14 @@ jce_struct!(RequestDataVersion3 {
 jce_struct!(RequestDataVersion2 {
     0 => map: HashMap<String,HashMap<String,Bytes>>,
 });
+
+pub fn pack_uni_request_data(data: &[u8]) -> Bytes {
+    let mut r = BytesMut::new();
+    r.put_u8(0x0A);
+    r.put_slice(data);
+    r.put_u8(0x0B);
+    Bytes::from(r)
+}
 
 pub mod onlinepush {
     pub mod reqpushmsg {

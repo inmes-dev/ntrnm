@@ -29,7 +29,7 @@ impl Bot {
                 }
                 if !refresh_sig(&bot).await {
                     fail_time += 1;
-                    if fail_time == 2 {
+                    if fail_time == 36 {
                         warn!("Auto refresh sig failed! No more automatic session refreshes!");
                         break;
                     }
