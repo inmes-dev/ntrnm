@@ -19,8 +19,8 @@ categories = ["api-bindings", "asynchronous"]
 # NB: When adding features here, don't forget to update ntrim's Cargo.toml
 default = ["sql"]
 sql = ["sqlx"]
-
-full = ["sql"]
+extend_cqcode = []
+full = ["sql", "extend_cqcode"]
 
 
 [dependencies]

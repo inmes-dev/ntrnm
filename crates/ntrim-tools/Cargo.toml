@@ -18,7 +18,6 @@ categories = ["api-bindings", "asynchronous"]
 [features]
 # NB: When adding features here, don't forget to update ntrim's Cargo.toml
 default = []
-
 full = []
 
 
@@ -47,6 +46,7 @@ flate2 = { version = "1.0.17", features = ["zlib-ng"], default-features = false 
 md5 = "0.7.0"
 signal-hook = "0.3.17"
 futures = "0.3"
+anyhow = "1.0.82"
 
 [dev-dependencies]
 tokio = { version = "1.37.0", features = ["full"] }

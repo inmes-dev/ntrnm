@@ -22,6 +22,8 @@ categories = ["web-programming", "api-bindings", "asynchronous"]
 
 [features]
 default = ["onebot", "sql"]
+# 扩展CQ码
+extend_cqcode = ["ntrim-core/extend_cqcode"]
 sql = ["ntrim-core/sql"]
 
 # backend
