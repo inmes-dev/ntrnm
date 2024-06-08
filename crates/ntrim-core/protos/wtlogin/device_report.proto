@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package wtlogin;
+
+message DeviceReport {
+  string bootloader = 1;
+  string version = 2;
+  string codename = 3;
+  string incremental = 4;
+  string fingerprint = 5;
+  string bootId = 6;
+  string androidId = 7;
+  string baseband = 8;
+  string innerVer = 9;
+}

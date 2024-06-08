@@ -1,16 +1,15 @@
-use std::error::Error;
-use std::fmt;
+use std::{fmt};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering::SeqCst;
+use anyhow::Error;
 use bitflags::bitflags;
-pub use rc_box::ArcBox;
-use tokio::sync::mpsc;
+use log::{warn};
+use ntrim_tools::tokiort;
 use crate::client::qsecurity::QSecurity;
 use crate::client::trpc::TrpcClient;
-use crate::events::login_event::LoginResponse;
-use crate::events::login_event::LoginResponse::Success;
-use crate::servlet::sync_push::SyncPushServlet;
+use crate::servlet::olpush::OlPushServlet;
+use crate::servlet::register::RegisterProxyServlet;
 use crate::session::SsoSession;
 
 bitflags! {
@@ -36,27 +35,53 @@ impl Bot {
     pub async fn new(
         session: SsoSession,
         qsec_mod: Arc<dyn QSecurity>,
-    ) -> Result<Arc<Self>, Box<dyn Error>> {
+    ) -> Result<Arc<Self>, Error> {
         let client = TrpcClient::new(session, qsec_mod).await?;
+
         let bot = Arc::new(Self {
             client,
             status: AtomicU32::new(BotStatus::Offline.bits()),
         });
+        RegisterProxyServlet::initialize(&bot).await;
+        OlPushServlet::initialize(&bot).await;
 
-        SyncPushServlet::register(&bot).await;
+        if option_env!("AUTO_RECONNECT").map_or(true, |v| v == "1") {
+            Self::auto_reconnect(&bot).await;
+        }
+        if option_env!("AUTO_REFRESH_SESSION").map_or(true, |v| v == "1") {
+            Self::auto_refresh_session(&bot).await;
+        }
 
         Ok(bot)
     }
 
-    pub fn is_online(&self) -> bool {
-        self.client.client.is_connected() &&
+    pub fn set_online(&self) {
+        let mut status = BotStatus::from_bits(self.status.load(SeqCst)).unwrap();
+        status.set(BotStatus::Online, true);
+        status.set(BotStatus::Offline, false);
+        self.status.store(status.bits(), SeqCst);
+    }
+
+    pub async fn set_offline(&self) {
+        warn!("Bot status change to offline");
+        let mut status = BotStatus::from_bits(self.status.load(SeqCst)).unwrap();
+        status.set(BotStatus::Online, false);
+        status.set(BotStatus::Offline, true);
+        self.status.store(status.bits(), SeqCst);
+        self.client.set_lost().await;
+    }
+
+    pub async fn is_online(&self) -> bool {
+        self.client.is_connected().await &&
             BotStatus::from_bits(self.status.load(SeqCst)).unwrap().contains(BotStatus::Online)
     }
 }
 
 impl fmt::Debug for Bot {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let uin = self.client.session.blocking_read().uin;
+        let uin = tokiort::global_tokio_runtime().block_on(async move {
+            self.client.session.read().await.uin
+        });
         f.debug_struct("Bot")
             .field("uin", &uin)
             .finish()

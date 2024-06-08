@@ -1,10 +1,14 @@
+pub(crate) mod heartbeat;
+
 use std::sync::atomic::Ordering::SeqCst;
+use anyhow::Error;
 use log::info;
 use prost::Message;
+use tokio::{self, runtime::Runtime, time::{self, Duration, Instant}};
 use ntrim_macros::command;
 use pb::trpc::register::{ * };
 use crate::bot::BotStatus;
-use crate::pb;
+use crate::{await_response, pb};
 
 struct RegisterBuilder;
 
@@ -13,8 +17,7 @@ impl RegisterBuilder {
     async fn generate(bot: &Arc<Bot>) -> Option<Vec<u8>> {
         let session = bot.client.session.clone();
         let mut session = session.write().await;
-        let current_time = chrono::Utc::now().timestamp();
-        info!("Generating register request for bot: {:?}, time: {}", session.uid, current_time);
+        info!("Generating register request for bot: {:?}", session.uid);
         //session.last_grp_msg_time = (current_time as u64) - (60 * 5);
 
         let protocol = &(session.protocol);
@@ -92,10 +95,23 @@ impl RegisterBuilder {
     }
 
     async fn parse(bot: &Arc<Bot>, data: Vec<u8>) -> Option<RegisterResponse> {
+        //info!("Received register response: {:?}", hex::encode(data.as_slice()));
         let resp = SsoSyncInfoResponse::decode(&data[..]).unwrap();
         if let Some(response) = resp.register_response {
+            if let Some(msg) = &response.msg {
+                if msg == "register success" {
+                    Self::on_success(bot.clone());
+                }
+            }
             return Some(response)
         }
         None
     }
+
+    fn on_success(bot: Arc<Bot>) {
+        // update bot status
+        bot.set_online();
+        Bot::do_heartbeat(bot.clone());
+    }
 }
+

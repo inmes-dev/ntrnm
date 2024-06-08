@@ -1,13 +1,12 @@
-use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU32;
 use crate::session::ticket::{SigType, Ticket, TicketManager};
-use chrono::Utc;
+use chrono::{DateTime, Local};
 use log::{debug, info, warn};
-use crate::client::codec::encoder::DEFAULT_TEA_KEY;
+use crate::client::codec::encoder::default_tea_key;
 use crate::client::packet::packet::CommandType;
-use crate::client::packet::packet::CommandType::WtLoginSt;
+use crate::client::packet::packet::CommandType::{ExchangeSig};
 use crate::session::device::Device;
 use crate::session::protocol::Protocol;
 
@@ -33,8 +32,21 @@ pub struct SsoSession {
     /// random from 10000 ~ 80000
     pub sso_seq: Arc<AtomicU32>,
 
+    pub encrypt_a1: Vec<u8>,
+    pub no_pic_sig: Vec<u8>,
+    pub tgtgt_key: Vec<u8>,
+
+    /// refresh sig
+    pub wt_session_ticket: Vec<u8>,
+    pub wt_session_key: Vec<u8>,
+    pub wt_session_create_time: u64,
+
     pub last_grp_msg_time: u64,
     pub last_c2c_msg_time: u64,
+
+    /// Web Tickets
+    pub skey: String,
+    pub pskey: String
 }
 
 impl SsoSession {
@@ -58,6 +70,14 @@ impl SsoSession {
             )),
             last_c2c_msg_time: 0,
             last_grp_msg_time: 0,
+            encrypt_a1: Vec::new(),
+            no_pic_sig: Vec::new(),
+            tgtgt_key: Vec::new(),
+            wt_session_ticket: Vec::new(),
+            wt_session_key: Vec::new(),
+            wt_session_create_time: 0,
+            skey: String::new(),
+            pskey: String::new()
         }
     }
 
@@ -70,13 +90,13 @@ impl SsoSession {
     }
 
     pub fn get_session_key(&self, command_type: CommandType) -> &[u8] {
-        if command_type == WtLoginSt {
-            return &*DEFAULT_TEA_KEY;
+        if command_type == ExchangeSig {
+            return default_tea_key();
         }
         if let Some(d2) = self.ticket(SigType::D2) {
             d2.sig_key.as_slice()
         } else {
-            &*DEFAULT_TEA_KEY
+            default_tea_key()
         }
     }
 
@@ -93,12 +113,16 @@ impl SsoSession {
 
 impl TicketManager for SsoSession {
     fn insert(&mut self, ticket: Ticket) {
-        if ticket.id == SigType::D2 || ticket.id == SigType::ST || ticket.id == SigType::A2 {
-            info!("{:?} ticket inserted, expire after {:.2} days", ticket.id, ticket.expire_time as f64 / (60 * 60 * 24) as f64);
+        let now = Local::now().timestamp();
+        if ticket.id == SigType::D2 || ticket.id == SigType::A2 {
+            //let reset_time = now - ticket.expire_time;
+            //info!("{:?} ticket inserted, expire after {:.2} days", ticket.id, (reset_time / (60 * 60 * 24)) as f64);
+            let expire_time = DateTime::from_timestamp(ticket.expire_time, 0);
+            info!("{:?} ticket inserted, expire at {:?}", ticket.id, expire_time);
         }
-        let now = Utc::now().timestamp();
-        if ticket.expire_time != 0 && now as u64 >= ticket.expire_time as u64 + ticket.create_time {
-            warn!("Ticket expired: {:?}", ticket.id);
+        if now >= ticket.expire_time && ticket.expire_time != 0 {
+            let expire_time = DateTime::from_timestamp(ticket.expire_time, 0);
+            warn!("Ticket expired: {:?}, expire_time: {:?}", ticket.id, expire_time);
         }
         debug!("Insert ticket: {:?}", ticket);
         self.tickets.insert(ticket.id, ticket);
@@ -106,6 +130,10 @@ impl TicketManager for SsoSession {
 
     fn ticket(&self, id: SigType) -> Option<&Ticket> {
         self.tickets.get(&id)
+    }
+
+    fn ticket_mut(&mut self, id: SigType) -> Option<&mut Ticket> {
+        self.tickets.get_mut(&id)
     }
 
     fn remove(&mut self, id: SigType) -> Option<Ticket> {
@@ -125,8 +153,8 @@ impl TicketManager for SsoSession {
             if ticket.expire_time == 0 {
                 return false;
             }
-            let now = Utc::now().timestamp() as u64;
-            if now - ticket.create_time > ticket.expire_time as u64 {
+            let now = Local::now().timestamp();
+            if now >= ticket.expire_time {
                 return true;
             }
         }

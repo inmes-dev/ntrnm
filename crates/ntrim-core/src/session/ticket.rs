@@ -41,11 +41,8 @@ pub struct Ticket {
     pub sig_key: Vec<u8>,
     /// e.g. d2
     pub sig: Option<Vec<u8>>,
-    pub create_time: u64,
-    /// 0 means never expire
-    /// unit is seconds -> expires after n seconds
-    /// `1` means expire after 1 second
-    pub expire_time: u32,
+    pub create_time: i64,
+    pub expire_time: i64,
 }
 
 impl Display for Ticket {
@@ -82,6 +79,8 @@ pub trait TicketManager {
     fn insert(&mut self, ticket: Ticket);
 
     fn ticket(&self, id: SigType) -> Option<&Ticket>;
+
+    fn ticket_mut(&mut self, id: SigType) -> Option<&mut Ticket>;
 
     fn remove(&mut self, id: SigType) -> Option<Ticket>;
 

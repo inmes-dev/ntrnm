@@ -11,6 +11,10 @@ pub struct Device {
     pub os_ver: String,
     pub vendor_os_name: String,
     pub fingerprint: Arc<Vec<u8>>,
+    pub apn_name: String,
+    pub apn: String,
+    pub mac_address: String,
+    pub os_type: String
 }
 
 impl Device {
@@ -33,7 +37,11 @@ impl Device {
             os_ver,
             vendor_os_name,
             fingerprint: Arc::new(fingerprint),
-            code, os_name
+            code, os_name,
+            apn_name: "".to_string(),
+            apn: "wifi".to_string(),
+            mac_address: "00:00:00:00:00:00".to_string(),
+            os_type: "android".to_string()
         }
     }
 }

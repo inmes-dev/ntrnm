@@ -1,9 +1,7 @@
 use std::io::{Read, Write};
-use std::io::prelude::*;
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
-use tokio;
 
 pub fn decompress_deflate(encoded: &[u8]) -> Vec<u8> {
     let mut decoder = ZlibDecoder::new(encoded);

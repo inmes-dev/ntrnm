@@ -32,5 +32,8 @@ pub enum LoginMode {
         /// session文件路径(json)
         #[clap(short, long)]
         session_path: String,
+        /// 是否上线立即刷新会话
+        #[clap(short, long, default_value = "false")]
+        immediate_refresh: Option<bool>,
     }
 }

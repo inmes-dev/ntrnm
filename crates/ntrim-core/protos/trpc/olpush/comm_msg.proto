@@ -1,0 +1,44 @@
+syntax = "proto2";
+
+package trpc.olpush;
+
+import "trpc/olpush/comm_elem.proto";
+
+message RoutingHead {
+  required uint64 peer_id = 1;
+  optional string peer_uid = 2;
+  optional uint32 platform = 3;
+  optional uint32 from_app_id = 4;
+  optional uint32 receiver_id = 5;
+  oneof contact {
+    Grp grp = 8;
+  };
+}
+
+message ContentHead {
+  required uint32 msg_type = 1;
+  required uint64 msg_id = 4;
+  required uint64 msg_seq = 5;
+  required uint64 msg_time = 6;
+  required uint64 msg_uid = 12;
+}
+
+message Grp {
+  required uint64 group_id = 1;
+  optional string sender_nick = 4;
+  optional string group_name = 7;
+}
+
+message MessageBody {
+  optional RichText rich_text = 1;
+}
+
+message Attr {
+
+}
+
+message RichText {
+  optional Attr attr = 1;
+  repeated Elem elems = 2;
+}
+

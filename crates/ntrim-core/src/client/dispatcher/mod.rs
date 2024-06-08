@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use log::{debug, error, info};
+use log::{debug, error};
 use tokio::sync::{mpsc, Mutex, oneshot};
 use crate::client::packet::from_service_msg::FromServiceMsg;
 
@@ -17,6 +17,10 @@ impl TrpcDispatcher {
             oneshot: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+    pub async fn clear_oneshot(&self) {
+        let mut oneshot = self.oneshot.lock().await;
+        oneshot.clear();
+    }
 
     pub async fn clear(&self) {
         let mut persistent = self.persistent.lock().await;
@@ -31,10 +35,23 @@ impl TrpcDispatcher {
         persistent.insert(cmd, sender);
     }
 
+    pub async fn register_multiple_persistent(&self, cmds: Vec<String>, sender: mpsc::Sender<FromServiceMsg>) {
+        let mut persistent = self.persistent.lock().await;
+        debug!("Registering persistent, cmd: {:?}", cmds);
+        cmds.iter().for_each(|c| {
+            persistent.insert(c.clone(), sender.clone());
+        });
+    }
+
     pub async fn register_oneshot(&self, seq: u32, sender: oneshot::Sender<FromServiceMsg>) {
         let mut oneshot = self.oneshot.lock().await;
         debug!("Registering oneshot, seq: {}", seq);
         oneshot.insert(seq, sender);
+    }
+
+    pub async fn unregister_oneshot(&self, seq: u32) {
+        let mut oneshot = self.oneshot.lock().await;
+        oneshot.remove(&seq);
     }
 
     pub(crate) async fn dispatch(self: Arc<Self>, msg: FromServiceMsg) {
@@ -60,7 +77,6 @@ impl TrpcDispatcher {
                 }
                 return;
             }
-
             error!("Failed to dispatch packet, seq: {}, cmd: {}", seq, cmd);
         }
     }

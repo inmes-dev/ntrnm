@@ -1,0 +1,26 @@
+syntax = "proto2";
+
+package trpc.register;
+
+// trpc.msg.register_proxy.RegisterProxy.PushParams
+message TrpcPushParams {
+  repeated OnlineDevice online_devices = 4;
+  optional GuildParams guild_params = 6;
+  optional string err_msg = 7;
+  optional uint32 group_msg_storage_time = 9;
+}
+
+message GuildParams {
+  optional uint32 guild_flag = 1;
+  optional uint32 guild_switch_flag = 2;
+}
+
+message OnlineDevice {
+  optional uint32 inst_id = 1;
+  optional uint32 client_type = 2;
+  optional uint32 state = 3;
+  optional uint32 plat_id = 4;
+  optional string plat_type = 5;
+  optional uint32 new_client_type = 6;
+  optional string device_name = 7;
+}

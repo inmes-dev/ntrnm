@@ -21,9 +21,10 @@ categories = ["web-programming", "api-bindings", "asynchronous"]
 
 
 [features]
-default = ["rustls", "onebot"]
-native-tls = ["ntrim-core/native-tls"]
-rustls = ["ntrim-core/rustls"]
+default = ["onebot", "sql"]
+# 扩展CQ码
+extend_cqcode = ["ntrim-core/extend_cqcode"]
+sql = ["ntrim-core/sql"]
 
 # backend
 onebot = []
@@ -43,6 +44,7 @@ reqwest = { version = "0.12.2", features = [
     "gzip",
     "deflate",
     "http2",
+    "rustls-tls"
 ], default-features = false }
 serde_json = "1.0.115"
 serde_toml = "0.0.1"
@@ -51,8 +53,6 @@ serde_derive = "1.0.197"
 
 tokio = { version = "1.37.0", features = ["full"] }
 tokio-stream = "0.1.15"
-trust-dns-resolver = "0.23.2"
-surge-ping = "0.8.1"
 
 anyhow = "1.0.82"
 url = "2.5.0"

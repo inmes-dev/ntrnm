@@ -1,16 +1,30 @@
-mod dns;
-
+use std::env;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use reqwest::Client;
 use ntrim_core::client::qsecurity::{QSecurity, QSecurityResult};
-use crate::qqsecurity::dns::Resolver;
 
 #[derive(Debug)]
 pub(crate) struct QSecurityViaHTTP {
     pub(crate) sign_server: String,
     pub(crate) client: Client
+}
+
+fn get_system_proxy() -> Option<String> {
+    if cfg!(target_os = "windows") {
+        env::var("HTTPS_PROXY").ok()
+            .or_else(|| env::var("https_proxy").ok())
+            .or_else(|| env::var("HTTP_PROXY").ok())
+            .or_else(|| env::var("http_proxy").ok())
+    } else if cfg!(target_os = "macos") || cfg!(target_os = "linux") {
+        env::var("https_proxy").ok()
+            .or_else(|| env::var("HTTPS_PROXY").ok())
+            .or_else(|| env::var("http_proxy").ok())
+            .or_else(|| env::var("HTTP_PROXY").ok())
+    } else {
+        None
+    }
 }
 
 impl QSecurityViaHTTP {
@@ -20,10 +34,24 @@ impl QSecurityViaHTTP {
         } else {
             format!("{}/", sign_server)
         };
-        let builder = Client::builder()
+        let mut builder = Client::builder()
             .connect_timeout(std::time::Duration::from_secs(15))
-            .timeout(std::time::Duration::from_secs(60))
-            .dns_resolver(Arc::new(Resolver::new()));
+            .timeout(std::time::Duration::from_secs(30))
+            .tcp_nodelay(true)
+            .use_rustls_tls();
+
+        let proxy_url = get_system_proxy();
+        if let Some(proxy_url) = proxy_url {
+            match reqwest::Proxy::all(&proxy_url) {
+                Ok(proxy) => {
+                    builder = builder.proxy(proxy);
+                }
+                Err(e) => {
+                    warn!("Failed to set proxy: {}", e)
+                }
+            };
+        }
+
         Self {
             sign_server,
             client: builder.build().unwrap()
@@ -48,7 +76,7 @@ impl QSecurity for QSecurityViaHTTP {
                 return false;
             }).unwrap();
             let response: serde_json::Value = serde_json::from_str(&response).map_err(|e| {
-                error!("Failed to ping sign server (0x2): {}", e);
+                error!("Failed to ping sign server (0x2): {}, json: {}", e, response);
                 return false;
             }).unwrap();
             let ret = response["retcode"].as_u64().unwrap();
@@ -64,20 +92,44 @@ impl QSecurity for QSecurityViaHTTP {
         }))
     }
 
-    fn energy<'a>(&'a self, data: String, salt: Box<[u8]>) -> Pin<Box<dyn Future<Output=Vec<u8>> + Send + 'a>> {
-        todo!()
+    fn energy<'a>(&'a self, data: String, salt: Vec<u8>) -> Pin<Box<dyn Future<Output=Vec<u8>> + Send + 'a>> {
+        Pin::from(Box::new(async move {
+            let start = std::time::Instant::now();
+            let salt = hex::encode(salt.as_slice());
+            let params = [("data", data), ("salt", salt)];
+            let response = self.client
+                .post(self.sign_server.clone() + "custom_energy")
+                .form(&params)
+                .send()
+                .await
+                .unwrap();
+            let response = response.text().await.unwrap();
+            let response: serde_json::Value = serde_json::from_str(&response).unwrap();
+            let ret = response["retcode"].as_u64().unwrap_or(1);
+            if ret != 0 {
+                let msg = response["message"].as_str().unwrap_or_else(|| "Unknown error");
+                log::error!("Failed to get custom_energy response ret: {}, msg: {}", ret, msg);
+                return vec![];
+            }
+            let cost_time = start.elapsed().as_millis();
+            info!("Energy request cost: {}ms", cost_time);
+            let data = response["data"].as_object().unwrap();
+            let data = data["data"].as_str().unwrap();
+            return hex::decode(data).unwrap();
+        }))
     }
 
     fn sign<'a>(&'a self, uin: String, cmd: String, buffer: Arc<Vec<u8>>, seq: u32) -> Pin<Box<dyn Future<Output=QSecurityResult> + Send + 'a>> {
         Pin::from(Box::new(async move {
             let start = std::time::Instant::now();
             let buffer = hex::encode(buffer.as_slice());
-            let urlencoded = reqwest::multipart::Form::new()
-                .text("uin", uin)
-                .text("cmd", cmd)
-                .text("seq", seq.to_string())
-                .text("buffer", buffer);
-            let response = self.client.post(self.sign_server.clone() + "sign").multipart(urlencoded).send().await.map_err(|e| {
+            let params = [
+                ("uin", uin),
+                ("cmd", cmd),
+                ("seq", seq.to_string()),
+                ("buffer", buffer)
+            ];
+            let response = self.client.post(self.sign_server.clone() + "sign").form(&params).send().await.map_err(|e| {
                 error!("Failed to send sign request: {}", e);
                 return QSecurityResult::new_empty();
             }).unwrap();

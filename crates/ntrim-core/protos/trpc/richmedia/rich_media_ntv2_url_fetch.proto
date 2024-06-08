@@ -1,0 +1,92 @@
+syntax = "proto2";
+
+// https://github.com/whitechi73/OpenShamrock/blob/59d762eecf6627bd5480cd308e2f6171118a3bc0/protobuf/src/main/java/protobuf/oidb/cmd0x11c5/NtV2RichMediaReq.kt#L11
+package trpc.rich_media_ntv2;
+// OidbSvcTrpcTcp.0x9067_202
+
+message NtV2RichMediaReq {
+  required MultiMediaReqHead head = 1;
+  optional DownloadRkeyReq download = 4;
+}
+
+message DownloadRkeyReq {
+  repeated uint32 types = 1;
+  optional uint32 downloadType = 2;
+}
+
+message MultiMediaReqHead {
+  required CommonHead head = 1;
+  required SceneInfo scene = 2;
+  required ClientMeta clientMeta = 3;
+}
+
+message ClientMeta {
+  required uint32 agentType = 1;
+}
+
+message CommonHead {
+  required uint32 req_id = 1;
+  required uint32 cmd = 2;
+  optional string msg = 3;
+}
+
+message SceneInfo {
+  required uint32 requestType = 101;
+  required uint32 businessType = 102;
+  optional uint32 appType = 103;
+  optional uint32 sceneType = 200;
+  optional C2CUserInfo c2c = 201;
+  optional GroupUserInfo grp = 202;
+  optional ChannelUserInfo channel = 203;
+  optional bytes byteArr = 205;
+}
+
+message C2CUserInfo {
+  required uint32 accountType = 1;
+  required string uid = 2;
+  optional bytes byteArr = 3;
+}
+
+message GroupUserInfo {
+  required uint64 uin = 1;
+}
+
+message ChannelUserInfo {
+  required uint64 guildId = 1;
+  required uint64 channelId = 2;
+  required uint32 channelType = 3;
+}
+
+// https://github.com/whitechi73/OpenShamrock/blob/59d762e/protobuf/src/main/java/protobuf/oidb/cmd0x11c5/NtV2RichMediaRsp.kt
+message NtV2RichMediaRsp {
+  required RspHead head = 1;
+  //optional UploadRsp upload = 2;
+  //optional DownloadRsp download = 3;
+  optional DownloadRkeyRsp downloadRkeyRsp = 4;
+  //optional DeleteRsp delete = 5;
+  //optional UploadCompletedRsp uploadCompleted = 6;
+  //optional MsgInfoAuthRsp msgInfoAuth = 7;
+  //optional UploadKeyRenewalRsp uploadKeyRenew = 8;
+  //optional DownloadSafeRsp downloadSafe = 9;
+  optional bytes extension = 99;
+}
+
+message RspHead {
+  required CommonHead commonHead = 1;
+  optional uint32 retCode = 2;
+  required string msg = 3;
+}
+
+message DownloadRkeyRsp {
+  repeated RKeyInfo rkeys = 1;
+}
+
+message RKeyInfo {
+  required string rkey = 1;
+  required uint64 rkeyTtlSec = 2;
+  optional uint32 storeId = 3;
+  optional uint32 rkeyCreateTime = 4;
+  optional uint32 type = 5;
+}
+
+
